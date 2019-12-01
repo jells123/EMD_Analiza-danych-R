@@ -6,6 +6,10 @@ output: html_document
 ---
 
 ```{r, echo=FALSE}
+library(corrplot)
+library(dplyr)
+library(ggplot2)
+
 printf <- function(...) invisible(print(sprintf(...)))
 ```
 
@@ -21,15 +25,16 @@ Read data:
 data <- read.csv("sledzie.csv")
 data <- data[-1]
 all_rows_number <- nrow(data)
-head(data)
+str(data)
 ```
 
 
 ```{r}
-rows_with_missing_values <- data[apply(data == "?", 2, any)]
-data <- data[apply(data != "?", 2, any)]
+data[data == "?"] <- NA
+data <- data[complete.cases(data),]
 rows_number <- nrow(data)
 ```
+
 
 ```{r, echo=FALSE}
 printf("Before: %d, after: %d", all_rows_number, rows_number)
@@ -40,4 +45,13 @@ printf("Before: %d, after: %d", all_rows_number, rows_number)
 summary(data)
 ```
 
+```{r}
+numeric_data <- data.frame(sapply(data, as.numeric))
+str(numeric_data)
+```
+
+
+```{r}
+corrplot(cor(numeric_data))
+```
 

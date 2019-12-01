@@ -12,7 +12,7 @@ output: html_document
 3. [Podstawowe informacje o zbiorze danych](#podst_info)
 4. [Analiza wartości atrybutów](#wartosci_atryb)
 5. [Korelacje między zmiennymi](#korelacje)
-6. [Zmiana rozmiaru śledzi w czasie]
+6. [Zmiana rozmiaru śledzi w czasie](#rozmiar)
 7. [Regresor przewidujący rozmiar śledzia]
 8. [Analiza ważności atrybutów najlepszego modelu regresji]
 
@@ -22,15 +22,17 @@ Zabawa była przednia
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
 
 ### Sub paragraph <a name="subparagraph1"></a>
-Zaimportowanie niezbędnych bibliotek:
-- dplyr
-- ggplot2
-- corrplot
+Zaimportowanie niezbędnych bibliotek:  
+- dplyr  
+- ggplot2  
+- corrplot  
+- plotly
 
 ```{r, echo=FALSE, results='hide'}
 library(corrplot)
 library(dplyr)
 library(ggplot2)
+library(plotly)
 
 printf <- function(...) invisible(print(sprintf(...)))
 ```
@@ -45,7 +47,6 @@ Read data:
 
 ```{r}
 data <- read.csv("sledzie.csv")
-data <- data[-1]
 all_rows_number <- nrow(data)
 str(data)
 ```
@@ -82,5 +83,11 @@ tu sprawdzamy wartosci
 
 ```{r}
 corrplot(cor(data))
+```
+
+## Zmiana rozmiaru śledzi w czasie <a name="rozmiar"></a>
+```{r}
+p <- plot_ly(data[sample(nrow(data), 1000), 1:2], x = ~X, y = ~length, type = 'scatter', mode = "markers")
+p
 ```
 

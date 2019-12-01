@@ -1,0 +1,25 @@
+---
+title: "Śledzie"
+author: "Urszula Walińska, Julia Będziechowska"
+date: '`r format(Sys.Date(), "%d.%m.%Y")`'
+output: html_document
+---
+
+Repeatable experiment:
+
+```{r}
+set.seed(54321)
+```
+
+Read data: 
+
+```{r}
+data <- read.csv("sledzie.csv")
+head(data)
+```
+
+
+```{r}
+rows_with_missing_values <- data[apply(data == "?", 2, any)]
+head(rows_with_missing_values)
+```

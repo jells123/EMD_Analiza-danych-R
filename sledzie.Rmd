@@ -5,6 +5,10 @@ date: '`r format(Sys.Date(), "%d.%m.%Y")`'
 output: html_document
 ---
 
+```{r, echo=FALSE}
+printf <- function(...) invisible(print(sprintf(...)))
+```
+
 Repeatable experiment:
 
 ```{r}
@@ -15,11 +19,22 @@ Read data:
 
 ```{r}
 data <- read.csv("sledzie.csv")
+all_rows_number <- nrow(data)
 head(data)
 ```
 
 
 ```{r}
 rows_with_missing_values <- data[apply(data == "?", 2, any)]
-head(rows_with_missing_values)
+data <- data[apply(data != "?", 2, any)]
+rows_number <- nrow(data)
+```
+
+```{r, echo=FALSE}
+printf("Before: %d, after: %d", all_rows_number, rows_number)
+```
+
+
+```{r}
+summary(data)
 ```

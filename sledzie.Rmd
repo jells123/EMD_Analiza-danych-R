@@ -19,6 +19,7 @@ Read data:
 
 ```{r}
 data <- read.csv("sledzie.csv")
+data <- data[-1]
 all_rows_number <- nrow(data)
 head(data)
 ```
@@ -38,3 +39,5 @@ printf("Before: %d, after: %d", all_rows_number, rows_number)
 ```{r}
 summary(data)
 ```
+
+

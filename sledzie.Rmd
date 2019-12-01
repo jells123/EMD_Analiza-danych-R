@@ -24,7 +24,11 @@ Zabawa była przednia
 ### Sub paragraph <a name="subparagraph1"></a>
 This is a sub paragraph, formatted in heading 3 style
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, results='hide'}
+library(corrplot)
+library(dplyr)
+library(ggplot2)
+
 printf <- function(...) invisible(print(sprintf(...)))
 ```
 
@@ -40,15 +44,16 @@ Read data:
 data <- read.csv("sledzie.csv")
 data <- data[-1]
 all_rows_number <- nrow(data)
-head(data)
+str(data)
 ```
 
 
 ```{r}
-data[data=="?"] = NA
-data<-data[complete.cases(data),]
+data[data == "?"] <- NA
+data <- data[complete.cases(data),]
 rows_number <- nrow(data)
 ```
+
 
 ```{r, echo=FALSE}
 printf("Before: %d, after: %d", all_rows_number, rows_number)
@@ -59,4 +64,13 @@ printf("Before: %d, after: %d", all_rows_number, rows_number)
 summary(data)
 ```
 
+```{r}
+numeric_data <- data.frame(sapply(data, as.numeric))
+str(numeric_data)
+```
+
+
+```{r}
+corrplot(cor(numeric_data))
+```
 

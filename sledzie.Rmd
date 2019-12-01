@@ -9,9 +9,9 @@ output: html_document
 1. [Streszczenie analizy](#streszczenie)
 2. [Wczytanie i przygotowanie danych](#wczytanie)
     1. [Example sub paragraph](#subparagraph1)
-3. [Podstawowe informacje o zbiorze danych]
-4. [Analiza wartości atrybutów]
-5. [Korelacje między zmiennymi]
+3. [Podstawowe informacje o zbiorze danych](#podst_info)
+4. [Analiza wartości atrybutów](#wartosci_atryb)
+5. [Korelacje między zmiennymi](#korelacje)
 6. [Zmiana rozmiaru śledzi w czasie]
 7. [Regresor przewidujący rozmiar śledzia]
 8. [Analiza ważności atrybutów najlepszego modelu regresji]
@@ -22,7 +22,10 @@ Zabawa była przednia
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
 
 ### Sub paragraph <a name="subparagraph1"></a>
-This is a sub paragraph, formatted in heading 3 style
+Zaimportowanie niezbędnych bibliotek:
+- dplyr
+- ggplot2
+- corrplot
 
 ```{r, echo=FALSE, results='hide'}
 library(corrplot)
@@ -59,18 +62,25 @@ rows_number <- nrow(data)
 printf("Before: %d, after: %d", all_rows_number, rows_number)
 ```
 
+```{r}
+data <- data.frame(sapply(data, as.numeric))
+```
+
+## Podstawowe informacje o zbiorze danych <a name="podst_info"></a>
+```{r}
+str(data)
+```
 
 ```{r}
 summary(data)
 ```
 
-```{r}
-numeric_data <- data.frame(sapply(data, as.numeric))
-str(numeric_data)
-```
+## Analiza wartości atrybutów <a name="wartosci_atryb"></a>
+tu sprawdzamy wartosci
 
+## Korelacje między zmiennymi <a name="korelacje"></a>
 
 ```{r}
-corrplot(cor(numeric_data))
+corrplot(cor(data))
 ```
 

@@ -26,8 +26,8 @@ head(data)
 
 
 ```{r}
-rows_with_missing_values <- data[apply(data == "?", 2, any)]
-data <- data[apply(data != "?", 2, any)]
+data[data=="?"] = NA
+data<-data[complete.cases(data),]
 rows_number <- nrow(data)
 ```
 

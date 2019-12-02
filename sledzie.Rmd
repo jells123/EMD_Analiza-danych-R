@@ -10,7 +10,7 @@ output: html_document
 2. [Wczytanie i przygotowanie danych](#wczytanie)
     1. [Example sub paragraph](#subparagraph1)
 3. [Podstawowe informacje o zbiorze danych]
-4. [Analiza wartości atrybutów]
+4. [Analiza wartości atrybutów](#atrybuty)
 5. [Korelacje między zmiennymi]
 6. [Zmiana rozmiaru śledzi w czasie]
 7. [Regresor przewidujący rozmiar śledzia]
@@ -24,7 +24,7 @@ Zabawa była przednia
 ### Sub paragraph <a name="subparagraph1"></a>
 This is a sub paragraph, formatted in heading 3 style
 
-```{r, echo=FALSE, results='hide'}
+```{r, echo=FALSE, results='hide', message=FALSE}
 library(corrplot)
 library(dplyr)
 library(ggplot2)
@@ -64,11 +64,209 @@ printf("Before: %d, after: %d", all_rows_number, rows_number)
 summary(data)
 ```
 
-```{r}
+## Analiza wartości atrybutów <a name="atrybuty"></a>
+
+Poniżej przedstawiono analizę wartości poszczególnych atrybutów, które opisują dany rekord. Łącznie danych jest 15 atrybutów. Wśród nich występują zmienne takie jak dostępności różnych gatunków planktonu, informacje dotyczące połowów, właściwości wody etc. 
+
+Lista atrybutów jest następująca:
+
+/ # TODO ADD LINKS
+
+- **length**: długość złowionego śledzia [cm];
+- **cfin1**: dostępność planktonu [zagęszczenie Calanus finmarchicus gat. 1];
+- **cfin2**: dostępność planktonu [zagęszczenie Calanus finmarchicus gat. 2];
+- **chel1**: dostępność planktonu [zagęszczenie Calanus helgolandicus gat. 1];
+- **chel2**: dostępność planktonu [zagęszczenie Calanus helgolandicus gat. 2];
+- **lcop1**: dostępność planktonu [zagęszczenie widłonogów gat. 1];
+- **lcop2**: dostępność planktonu [zagęszczenie widłonogów gat. 2];
+- **fbar**: natężenie połowów w regionie [ułamek pozostawionego narybku];
+- **recr**: roczny narybek [liczba śledzi];
+- **cumf**: łączne roczne natężenie połowów w regionie [ułamek pozostawionego narybku];
+- **totaln**: łączna liczba ryb złowionych w ramach połowu [liczba śledzi];
+- **sst**: temperatura przy powierzchni wody [°C];
+- **sal**: poziom zasolenia wody [Knudsen ppt];
+- **xmonth**: miesiąc połowu [numer miesiąca];
+- **nao**: oscylacja północnoatlantycka [mb].
+
+```{r echo=FALSE}
 numeric_data <- data.frame(sapply(data, as.numeric))
-str(numeric_data)
 ```
 
+### Długość złowionego śledzia (length) <a name="attr_length"></a>
+
+```{r echo=FALSE}
+analyze_distribution <- function(values, label, hist_color="#28A5A9") {
+  df <- data.frame(v=values)
+  p <- ggplot(df, aes(x=v)) + geom_bar(fill=hist_color, color='black')
+  title <- sprintf("Histogram liczebności zmiennej '%s'", label)
+  print(p + ggtitle(title))
+  print(summary(values))
+  printf("Odchylenie standardowe: %f", sd(values))
+}
+analyze_distribution(numeric_data$length, 'length')
+# TODO make it better, too much empty space between
+```
+
+Histogram dystrybucji zmiennej *length*, jak i postawowe statystyki które ją opisują świadczą o tym że ta zmienna ma rozkład normalny. Średnia oraz media są sobie prawie równe. Sama rozpiętość zmiennej jest stosunkowo mała, najmniejsza zaobserwowana długość to 19 centymetrów, największa - 32.5 centymetra. Należało się tego spodziewać, ponieważ zmienna ta opisuje długość śledzia, a ponadto wiadomo o nich że wszystkie miały około 3 lat. Tę zmienną charakteryzuje także niskie odchylenie standardowe.
+
+### Dostępność planktonu -  zagęszczenie Calanus finmarchicus <a name="attr_cfin"></a>
+```{r echo=FALSE}
+analyze_distribution(numeric_data$cfin1, 'cfin1', "#1FE4EB")
+
+cfin_eq_min <- numeric_data$cfin1[numeric_data$cfin1 == min(numeric_data$cfin1)]
+min_ratio = nrow(data.frame(x=cfin_eq_min)) / nrow(numeric_data)
+printf("Procent dla którego zmienna osiągała wartość równą minimum: %f", min_ratio)
+```
+Na histogramie dystrybucji zmiennej *cfin1* widoczna jest zdecydująca przewaga bardzo niskich wartości, bliskich minimum. W prawie 30% przypadkach wartość tej zmiennej wynosiła 2.0. Maksymalne zaobserwowane zagęszczenie wyniosło 40.0. Odchylenie standardowe jest wysokie i rozkład zmiennej nie przypomina żadnego charakterystycznego rozkładu.
+
+```{r echo=FALSE}
+analyze_distribution(numeric_data$cfin2, 'cfin2', "#2D8F92")
+```
+W przypadku zmiennej *cfin2* także wiele razy zaobserwowano wartości bliskie minimum, jednak nie tak dużo jak w przypadku *cfin1*. Średnia jak i mediana są w tym przypadku wyższe. Rozpiętość zmiennej jest zbliżona: wartość minimalna wynosi 2.0 a maksymalna 49.0. Zauważalne są trzy słupki histogramu znacznie wyższe od pozostałych. Zmienna ma niestandardowy rozkład i wysokie odchylenie standardowe. 
+
+```{r echo=FALSE}
+# does not work! damn!
+two_density_plots <- function(df, c1, c2) {
+  df1 <- data.frame(halo=select(df, c1), label=c1)
+  df2 <- data.frame(halo=select(df, c2), label=c2)
+  joined <- rbind(df1, df2)
+  return(ggplot(joined, aes(value, fill=label)) + geom_density(alpha = 0.5))
+}
+
+# TODO try to replace with BOXPLOTS for all cf1in... chal etc at once
+cfin1 <- data.frame(value = numeric_data$cfin1, label = 'cfin1')
+cfin2 <- data.frame(value = numeric_data$cfin2, label = 'cfin2')
+
+planktons <- rbind(cfin1, cfin2)
+p <- ggplot(planktons, aes(value, fill=label)) + geom_density(alpha = 0.5)
+print(p + ggtitle("Histogram gęstości prawdopodobieństwa zmiennych cfin1 i cfin2"))
+```
+
+Dystrybucje zmiennych *cfin1* i *cfin2*, odpowiadające zagęszczeniu planktonu dwóch podgatunków Calanus finmarchicus przedstawiono na jednym wykresie, dzięki czemu można zaobserwować że te dystrybucje mają podobne cechy. Różnią się jedynie dla wartości minimalnych i maksymalnych, oprócz tego ich rozkłady gęstości prawdopodobieństwa są nieregularne. 
+
+### Dostępność planktonu -  zagęszczenie Calanus helgolandicus <a name="attr_chel"></a>
+```{r echo=FALSE}
+analyze_distribution(numeric_data$chel1, 'chel1', "#21DB59")
+```
+Histogram dystrybucji zmiennej *chel1* ukazuje, że ta zmienna także ma niestandardowy rozkład. Rozkład ten kumuluje się wokół wartości 13.0, co widać na histogramie jako wysoki słupek. Podstawowe statystyki (w szczególności minimum i maksimum) są zbliżone do tych opisujących zmienną *cfin2*. 
+
+```{r echo=FALSE}
+analyze_distribution(numeric_data$chel2, 'chel2', "#1D9E44")
+```
+Podobnie dla zmiennej *chel2*, rozkład jest nieregularny i odchylenie standardowe jest wysokie. Ta zmienna dostępności planktonu ma stosunkowo wysoką średnią. Widoczne są dwa wysokie słupki, tym razem część wartości kumuluje się około liczby 24 (przedział 23-24) i 50 (przedział 49-50). 
+
+```{r echo=FALSE}
+chel1 <- data.frame(value = numeric_data$chel1, label = 'chel1')
+chel2 <- data.frame(value = numeric_data$chel2, label = 'chel2')
+
+planktons <- rbind(chel1, chel2)
+p <- ggplot(planktons, aes(value, fill=label)) + geom_density(alpha = 0.5)
+print(p + ggtitle("Histogram gęstości prawdopodobieństwa zmiennych chel1 i chel2"))
+```
+
+Na powyższym histogramie zaprezentowano histogramy gęstości prawdopodobieństwa dla *cfin1* i *cfin2*. ???
+
+### Dostępność planktonu -  zagęszczenie widłonogów <a name="attr_lcop"></a>
+```{r echo=FALSE}
+analyze_distribution(numeric_data$lcop1, 'lcop1', "#FF6666")
+```
+Charakterystyka rozkładu zmiennej *lcop1* jest podobna jak w przypadku innych zmiennych dotyczących dostępności plakntonu. Zmienna przyjmuje różnorodne wartości; najwięcej wartości przyjmuje w przedziale 22-23, co można zaobserwować w postaci wysokiego słupka na histogramie.
+
+```{r echo=FALSE}
+analyze_distribution(numeric_data$lcop2, 'lcop2', "#C43F3F")
+```
+Także w przypadku zmiennej *lcop2*, jej rozkład jest nieregularny i jej wartości kumulują się w wybranych przedziałach (20-21 oraz 51-52). Odchylenie standardowe jest ponownie wysokie. Zakres wartości tej zmiennej jest podobny jak w przypadku poprzednich zmiennych opisujących dostępność planktonu. 
+
+```{r echo=FALSE}
+lcop1 <- data.frame(value = numeric_data$lcop1, label = 'lcop1')
+lcop2 <- data.frame(value = numeric_data$lcop2, label = 'lcop2')
+
+planktons <- rbind(lcop1, lcop2)
+p <- ggplot(planktons, aes(value, fill=label)) + geom_density(alpha = 0.5)
+print(p + ggtitle("Histogram gęstości prawdopodobieństwa zmiennych lcop1 i lcop2"))
+```
+
+### Natężenie połowów w regionie (fbar) [ułamek pozostawionego narybku] <a name="attr_fbar"></a>
+
+```{r echo=FALSE}
+p <- ggplot(numeric_data, aes(x=fbar)) + geom_histogram(binwidth=0.03, fill="#7D4190", alpha=0.7, color='black')
+print(p + ggtitle("Histogram liczebności zmiennej 'fbar'"))
+summary(numeric_data$fbar)
+printf("Odchylenie standardowe: %f", sd(numeric_data$fbar))
+```
+Średnie natężenie połowów w regionie wynosi 0.3306, co oznacza że średnio około 33% narybku nie zostaje złowione. Z histogramu wynika, że zdarzyły się także (rzadkie) przypadki w których ten współczynnik był bliski maksimum (około 85%). Rozkład zmiennej jest nieregularny, jednak można zaobserwować tendencję to zmniejszania się liczności wystąpień zmiennej im większy ułamek pozostawionego narybku. Większość przypadków nie przekracza 50%.
+
+### Roczny narybek (recr) [liczba śledzi] <a name="attr_recer"></a>
+
+```{r echo=FALSE}
+p <- ggplot(numeric_data, aes(x=recr)) + geom_histogram(binwidth=50000, color='black')
+print(p + ggtitle("Histogram liczebności zmiennej 'recr'"))
+summary(numeric_data$recr)
+printf("Odchylenie standardowe: %f", sd(numeric_data$recr))
+```
+Zmienna *recr* przyjmuje bardzo wysokie wartości, są to liczby rzędu kilkuset tysięcy. Zaobserwowane maksimum wynosi ponad półtora miliona. Również w tym przypadku odchylenie standardowe jest wysokie. Przeważają wartości rzędu 400 000 śledzi. Zmienna przyjmuje bardzo rożne wartości co jest stosunkowo zaskakujące, biorąc pod uwagę co reprezentuje ta zmienna. Z histogramu wynika, że zdarzały się lata które skutowały w bardzo dużej liczbie narybku, nawet przekraczające średnią dwukrotnie. 
+
+### Łączne roczne natężenie połowów w regionie (cumf) [ułamek pozostawionego narybku] <a name="attr_cumf"></a>
+
+```{r echo=FALSE}
+p <- ggplot(numeric_data, aes(x=cumf)) + geom_histogram(binwidth=0.02, fill="#6A5CA2", alpha=0.8, color='black')
+print(p + ggtitle("Histogram liczebności zmiennej 'cumf'"))
+summary(numeric_data$cumf)
+printf("Odchylenie standardowe: %f", sd(numeric_data$cumf))
+```
+Zmienna `cumf` jest powiązana ze zmienną *fbar* - natężenie połowów w regionie, ponieważ dotyczy tej samej obserwacji (ułamku pozostawionego narybku), tylko kumuluje wszystkie wartości zaobserwowane w danym roku. Średnie łączne natężenie połowów wynosi około 23% pozostawionego narybku. Jest to mniej niż wynika ze zmiennej *fbar*. Można zaobserwować że mimo wystąpienia dla zmiennej *fbar* wartości skrajnie wysokich, w tym przypadku zakres wartości zmiennej jest już mniejszy. Maksymalne łączne rozczne natężenie połowów w regionie wynosiło niecałe 40%.
+
+### Łączna liczba ryb złowionych w ramach połowu (totaln) [liczba śledzi] <a name="attr_totaln"></a>
+
+```{r echo=FALSE}
+p <- ggplot(numeric_data, aes(x=totaln)) + geom_histogram(binwidth=50000, fill="#ECBA57", color='black')
+print(p + ggtitle("Histogram liczebności zmiennej 'totaln'"))
+summary(numeric_data$totaln)
+printf("Odchylenie standardowe: %f", sd(numeric_data$totaln))
+```
+Podobnie jak zmienna *recr*, także wyrażana w liczbie śledzi, zmienna *totaln* osiąga wartości rzędu kilkuset tysięcy, z maksymalną wartością przekraczającą milion. Najwięcej razy ta liczba była rzędu 750 000, co odzwierciedla wysoki słupek na wyrkesie histogramu. Zdarzyły się przypadki połowów w których liczba śledzi była dwa razy większa niż ich średnia liczba.
+
+### Temperatura przy powierzchni wody (sst) [°C] <a name="attr_sst"></a>
+
+```{r echo=FALSE}
+p <- ggplot(numeric_data, aes(x=sst)) + geom_histogram(binwidth=5, fill="#BFB0BB", color='black')
+print(p + ggtitle("Histogram liczebności zmiennej 'sst'"))
+summary(numeric_data$sst)
+printf("Odchylenie standardowe: %f", sd(numeric_data$sst))
+```
+Rozkład wartości tej zmiennej jest stosunkowo zaskakujący, ponieważ wynika z niego że często obserwowane były zarówno bardzo niskie jak i bardzo wysokie temperatury wody. Szczególnie maksimum jest zastanawiające - największa wartość tej zmiennej to 52 stopnie celsjusza. Należy brać pod uwagę fakt że pomiar następował przy powierzchni wody, w związku z czym wpływ na taki pomiar z pewnością miało na przykład nasłonecznienie. Średnia temperatura przy powierzchni wody wynosi 25 stopni. Stosunkowo rzadko odnotowano temperatury bliskie zera. Dwa przedziały o największej liczności, jak wynika z histogramu, to 30-35 oraz 10-15. 
+
+### Poziom zasolenia wody (sal) [Knudsen ppt] <a name="attr_sal"></a>
+
+```{r echo=FALSE}
+p <- ggplot(numeric_data, aes(x=sal)) + geom_histogram(binwidth=0.025, fill="#A9D7D4", color="black")
+print(p + ggtitle("Histogram liczebności zmiennej 'sal'"))
+summary(numeric_data$sal)
+```
+Zmienna *sal* przyjmuje wartości z bardzo małego przedziału, w porównaniu do innych atrybutów tego zbioru danych. Wartości minimalne i maksymalne niewiele różnią się od wartości średniej. Z hsitogramu można wywnioskować, że większość obserwacji przyjęło wartości bliskie średniej (lub mediany, są one sobie równe). Jednak ponadto, część wartości kupuluje się albo przy minimum, albo przy maksimum. Najmniej wystąpień jest wartości pośrednich.
+
+### Miesiąc połowu (xmonth) [numer miesiąca] <a name="attr_xmonth"></a>
+
+```{r echo=FALSE}
+months_breaks <- factor(1:12)
+months_labels <- c("sty ", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paz", "lis", "gru")
+
+p <- ggplot(numeric_data, aes(x=factor(xmonth))) + geom_histogram(fill="#98F0CD", color="black", stat="count") + scale_x_discrete(breaks=months_breaks, labels=months_labels) 
+print(p + ggtitle("Histogram liczebności zmiennej 'xmonth'"))
+summary(numeric_data$xmonth)
+```
+Najwięcej obserwacji odnotowano dla miesiąca sierpień, w następnej kolejności: październik i lipiec. Najmniej obserwacji jest danych dla stycznia. Warto zwrócić uwagę, że rozkład miesięcy jest nierównomierny. Biorąc dalej pod uwagę, że każdy miesiąc charakteryzują pewne warunki pogodowe, należy uwzględniać taki fakt na przykład przy interpretowaniu średniej temperatury przy powierzchni wody. Wartości z miesiąca sierpień mogłyby zawyżać średnią w związku z tym, że danych jest najwięcej rekordów reprezentujących ten miesiąc. W ogólności z histogramu wynika, że dominują miesiące letnie oraz poprzedzające i następujące ten okres. 
+
+### Oscylacja północnoatlantycka (nao) [mb] <a name="attr_nao"></a>
+
+```{r echo=FALSE}
+p <- ggplot(numeric_data, aes(x=nao)) + geom_histogram(fill="#003333", alpha=0.75, color='black', binwidth=1)
+print(p + ggtitle("Histogram liczebności zmiennej 'nao'"))
+summary(numeric_data$nao)
+printf("Odchylenie standardowe: %f", sd(numeric_data$nao))
+```
+Zmienna *nao* jako jedyna przyjmuje wartości ujemne i dodatnie. Jest to zgodne z zakresem wartości jakie przyjmuje tzw. indeks NAO, który może reprezentować wystąpienie dodatniej lub ujemnej *fazy NAO*. Oscylacja północnoatlantycka jest zjawiskiem meteorologicznym wpływającym na klimat, które manifestuje się poprzez fluktuacje ciśnienia atmosferycznego, temperatury powietrza, prędkości wiatru, ilości opadów i innych parametrów [wikipedia(https://pl.wikipedia.org/wiki/Oscylacja_p%C3%B3%C5%82nocnoatlantycka)]. 
+Na histogramie widać, że rozkład tej zmiennej byłby zbliżony do normalnego, gdyby nie niska liczność wartości w przedziale -2 do -1. Zarówno wartości skrajnie niskie jak i wysokie występują stosunkowo rzadko. Średnia wartość jest bliska zeru. Ta zmienna także ma dość wysokie odchylenie standardowe.
 
 ```{r}
 corrplot(cor(numeric_data))

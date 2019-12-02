@@ -9,10 +9,10 @@ output: html_document
 1. [Streszczenie analizy](#streszczenie)
 2. [Wczytanie i przygotowanie danych](#wczytanie)
     1. [Example sub paragraph](#subparagraph1)
-3. [Podstawowe informacje o zbiorze danych]
-4. [Analiza wartości atrybutów](#atrybuty)
-5. [Korelacje między zmiennymi]
-6. [Zmiana rozmiaru śledzi w czasie]
+3. [Podstawowe informacje o zbiorze danych](#podst_info)
+4. [Analiza wartości atrybutów](#wartosci_atryb)
+5. [Korelacje między zmiennymi](#korelacje)
+6. [Zmiana rozmiaru śledzi w czasie](#rozmiar)
 7. [Regresor przewidujący rozmiar śledzia]
 8. [Analiza ważności atrybutów najlepszego modelu regresji]
 
@@ -22,12 +22,17 @@ Zabawa była przednia
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
 
 ### Sub paragraph <a name="subparagraph1"></a>
-This is a sub paragraph, formatted in heading 3 style
+Zaimportowanie niezbędnych bibliotek:  
+- dplyr  
+- ggplot2  
+- corrplot  
+- plotly
 
 ```{r, echo=FALSE, results='hide', message=FALSE}
 library(corrplot)
 library(dplyr)
 library(ggplot2)
+library(plotly)
 
 printf <- function(...) invisible(print(sprintf(...)))
 ```
@@ -42,7 +47,6 @@ Read data:
 
 ```{r}
 data <- read.csv("sledzie.csv")
-data <- data[-1]
 all_rows_number <- nrow(data)
 str(data)
 ```
@@ -59,9 +63,13 @@ rows_number <- nrow(data)
 printf("Before: %d, after: %d", all_rows_number, rows_number)
 ```
 
-
 ```{r}
-summary(data)
+data <- data.frame(sapply(data, as.numeric))
+```
+
+## Podstawowe informacje o zbiorze danych <a name="podst_info"></a>
+```{r}
+str(data)
 ```
 
 ## Analiza wartości atrybutów <a name="atrybuty"></a>
@@ -269,6 +277,19 @@ Zmienna *nao* jako jedyna przyjmuje wartości ujemne i dodatnie. Jest to zgodne 
 Na histogramie widać, że rozkład tej zmiennej byłby zbliżony do normalnego, gdyby nie niska liczność wartości w przedziale -2 do -1. Zarówno wartości skrajnie niskie jak i wysokie występują stosunkowo rzadko. Średnia wartość jest bliska zeru. Ta zmienna także ma dość wysokie odchylenie standardowe.
 
 ```{r}
-corrplot(cor(numeric_data))
+summary(data)
+```
+
+## Korelacje między zmiennymi <a name="korelacje"></a>
+
+```{r}
+corrplot(cor(data))
+```
+>>>>>>> 1cbae5090d9abdbeecdc42410329d1d01a84f4a5
+
+## Zmiana rozmiaru śledzi w czasie <a name="rozmiar"></a>
+```{r}
+p <- plot_ly(data[sample(nrow(data), 1000), 1:2], x = ~X, y = ~length, type = 'scatter', mode = "markers")
+p
 ```
 

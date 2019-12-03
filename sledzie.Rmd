@@ -8,7 +8,6 @@ output: html_document
 # Spis treści
 1. [Streszczenie analizy](#streszczenie)
 2. [Wczytanie i przygotowanie danych](#wczytanie)
-    1. [Example sub paragraph](#subparagraph1)
 3. [Podstawowe informacje o zbiorze danych](#podst_info)
 4. [Analiza wartości atrybutów](#wartosci_atryb)
 5. [Korelacje między zmiennymi](#korelacje)
@@ -21,13 +20,7 @@ Zabawa była przednia
 
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
 
-### Sub paragraph <a name="subparagraph1"></a>
-Zaimportowanie niezbędnych bibliotek:  
-- dplyr  
-- ggplot2  
-- corrplot  
-- plotly
-
+Lista wykorzystanych bibliotek:
 ```{r, echo=FALSE, results='hide', message=FALSE}
 library(corrplot)
 library(dplyr)
@@ -36,6 +29,9 @@ library(plotly)
 
 printf <- function(...) invisible(print(sprintf(...)))
 ```
+```{r, echo=FALSE}
+(.packages())
+```
 
 Repeatable experiment:
 
@@ -43,14 +39,19 @@ Repeatable experiment:
 set.seed(54321)
 ```
 
-Read data: 
+Wczytanie danych i podgląd postawowych informacji na temat zbioru danych: 
 
 ```{r}
 data <- read.csv("sledzie.csv")
+data <- data[-1] # skip 'X' index column
 all_rows_number <- nrow(data)
 str(data)
 ```
+Z rezultatu wywołania funkcji `str` wynika, że niektóre kolumny zawierają znaki zapytania, co oznacza brakujące dane. Są to zmiene dotyczące dostępności planktonu i temperatury przy powierzchni wody.
 
+Przetwarzanie brakujących wartości:
+
+Każdą brakującą wartość, oryginalnie reprezentowaną jako znak zapytania, zamieniamy na charakterystyczne dla języka R wyrażenie `NA`. Dzięki temu możliwe jest wykorzystanie funkcji `complete_cases`. 
 
 ```{r}
 data[data == "?"] <- NA
@@ -58,14 +59,16 @@ data <- data[complete.cases(data),]
 rows_number <- nrow(data)
 ```
 
-
+Podsumowanie liczby wierszy w zbiorze danych przed i po pominięciu wierszy z brakującymi danymi:
 ```{r, echo=FALSE}
-printf("Before: %d, after: %d", all_rows_number, rows_number)
+printf("Przed: %d, po usunięciu wierszy zawierających '?': %d", all_rows_number, rows_number)
 ```
 
+? Komentarz
 ```{r}
 data <- data.frame(sapply(data, as.numeric))
 ```
+
 
 ## Podstawowe informacje o zbiorze danych <a name="podst_info"></a>
 ```{r}
@@ -117,7 +120,8 @@ print(p + ggtitle("Histogram liczebności zmiennej 'length'"))
 summary(numeric_data$length)
 printf("Odchylenie standardowe: %f", sd(numeric_data$length))
 
-# TODO make it better, too much empty space between
+# TODO smoothen, apply median filter?
+# plot(numeric_data$length, type='l')
 ```
 
 Histogram dystrybucji zmiennej *length*, jak i postawowe statystyki które ją opisują świadczą o tym że ta zmienna ma rozkład normalny. Średnia oraz media są sobie prawie równe. Sama rozpiętość zmiennej jest stosunkowo mała, najmniejsza zaobserwowana długość to 19 centymetrów, największa - 32.5 centymetra. Należało się tego spodziewać, ponieważ zmienna ta opisuje długość śledzia, a ponadto wiadomo o nich że wszystkie miały około 3 lat. Tę zmienną charakteryzuje także niskie odchylenie standardowe.
@@ -294,7 +298,7 @@ corrplot(cor(data))
 
 ## Zmiana rozmiaru śledzi w czasie <a name="rozmiar"></a>
 ```{r}
-p <- plot_ly(data[sample(nrow(data), 1000), 1:2], x = ~X, y = ~length, type = 'scatter', mode = "markers")
+p <- plot_ly(data[sample(nrow(data), 1000), 1:2], x = any, y = ~length, type = 'scatter', mode = "markers")
 p
 ```
 

@@ -59,14 +59,13 @@ raw_data <- raw_data %>%
 all_rows_number <- nrow(raw_data)
 str(raw_data)
 ```
-Z rezultatu wywołania funkcji `str` wynika, że niektóre kolumny zawierają znaki zapytania, co oznacza brakujące dane. Są to zmiene dotyczące dostępności planktonu i temperatury przy powierzchni wody. Dokładne informacje dotyczące brakujących danych z uwzględnieniem kolumn przedstawia poniższa komórka:
+
+Z rezultatu wywołania funkcji `str` wynika, że niektóre kolumny zawierają znaki zapytania, co oznacza brakujące dane. 
+
 ```{r}
 raw_data[raw_data == "?"] <- NA
 missing_rows <- raw_data[!complete.cases(raw_data),]
 data <- raw_data[complete.cases(raw_data),]
-```
-```{r, echo=FALSE}
-for(cname in colnames(missing_rows)) { printf("%s: %d brakujących wartości", cname, sum(is.na(missing_rows[cname]))) }
 ```
 
 Przetwarzanie brakujących wartości:
@@ -84,12 +83,18 @@ Zbiór danych powstał na potrzeby analizy rozmiaru śledzi oceanicznich wyławi
 
 Wiersze w zbiorze są uporządkowane chronologicznie, dlatego przyjęto że liczba porządkująca wiersze będzie utożsamiana z czasem.
 
-/ # TODO dodac podstawowe statystyki?
-
 ```{r}
 str(raw_data)
 ```
-Jak widać w rezultacie wywołania powyższej metody, oryginalne, surowe dane zawierają 52582 przykłady opisane przez 16 atrybutów (15 właściwych i 1 porządkujący). Ich dokładniejsza analiza zostanie przedstawiona w dalszej części raportu. W niektorych przypadkach możemy zaobserwować brak pomiaru wartości danego atrybutu oznaczony przez znak zapytania ("?"). Łącznie daje to nam około 10000 niepełnych przykładów, które zdecydowałyśmy się odfiltrować, aby ułatwić dalszą analizę. Z powodu braku niektórych wartości i oznaczenia ich przez "?" typ niektórych zmiennych został domyślnie ustawiony na Factor (typ wyliczeniowy, może być interpretowany jako kategoria). Widzimy jednak, że pozostałe wartości są numeryczne (całkowite lub niecałkowite), tak więc w dalszej analizie, po odfiltrowaniu niepełnych przykładów, dla ułatwienia zmienimy typ tych zmiennych na numeryczny. R domyślnie ustala typ zmiennych całkowitych na *integer*, a niecałkowitych na *numeric*.
+Jak widać w rezultacie wywołania powyższej metody, oryginalne, surowe dane zawierają 52582 przykłady opisane przez 16 atrybutów (15 właściwych i 1 porządkujący). Ich dokładniejsza analiza zostanie przedstawiona w dalszej części raportu. W niektorych przypadkach możemy zaobserwować brak pomiaru wartości danego atrybutu oznaczony przez znak zapytania.
+
+Są to zmiene dotyczące dostępności planktonu i temperatury przy powierzchni wody. Dokładne informacje dotyczące brakujących danych z uwzględnieniem kolumn przedstawia poniższa komórka:
+
+```{r, echo=FALSE}
+for(cname in colnames(missing_rows)) { printf("%s: %d brakujących wartości", cname, sum(is.na(missing_rows[cname]))) }
+```
+
+Łącznie daje to nam około 10000 niepełnych przykładów, które zdecydowałyśmy się odfiltrować, aby ułatwić dalszą analizę. Z powodu braku niektórych wartości i oznaczenia ich przez "?" typ niektórych zmiennych został domyślnie ustawiony na Factor (typ wyliczeniowy, może być interpretowany jako kategoria). Widzimy jednak, że pozostałe wartości są numeryczne (całkowite lub niecałkowite), tak więc w dalszej analizie, po odfiltrowaniu niepełnych przykładów, dla ułatwienia zmienimy typ tych zmiennych na numeryczny. R domyślnie ustala typ zmiennych całkowitych na *integer*, a niecałkowitych na *numeric*.
 
 ```{r}
 dim(data)
@@ -331,6 +336,26 @@ Na powyższej macierzy korelacji możemy zaobserwować następujące zależnośc
 - możemy również dostrzec dość silną ujemną zależność rozmiaru śledzi oraz *sst* oznaczające temperaturę przy powierzchni wody. Oznacza to że wzraz ze wzrostem temperatury rozmiar śledzi się zmniejsza. 
 - natomiast zwiększenie temperatury na powierzchni wody wykazuje pozytywną korelację z *nao* - oscylacją północno atlantycką. W związku z tym, być może to ona właśnie przyczynia się do jej ocieplenia.
 
+Poniżej dla zobrazowania zależności rozmiaru śledzi od innych czynników przedstawione zostały dwa przykładowe wykresy:
+
+```{r}
+p <- ggplot(data = numeric_data[sample(nrow(numeric_data), 1000), c(2, 13)], aes(x = sst, y = length)) +
+  geom_point() +
+  geom_smooth()
+p
+```
+
+- wykres zależności długości śledzia od temperatury przy powierzchni wody, potwierdza obserwację z macierzy korelacji - widać trend, że wzraz ze wzrostem temperatury rozmiar śledzi maleje.
+
+```{r}
+p <- ggplot(data = numeric_data[sample(nrow(numeric_data), 1000), c(2, 10)], aes(x = recr, y = length)) +
+  geom_point() +
+  geom_smooth()
+p
+```
+
+- wykres zależności długości śledzia od liczby śledzi, również potwierdza obserwację z macierzy korelacji - nie widać żadnej konkretnej zależności.
+
 ## Zmiana rozmiaru śledzi w czasie <a name="rozmiar"></a>
 ```{r}
 length_in_time <- raw_data[sample(nrow(raw_data), 1000), 1:2]
@@ -390,29 +415,6 @@ summary(lm_mod)
 
 ```{r}
 printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)), calculate_rsq(pred, validation$length))
-```
-
-```{r}
-lambda_seq <- 10^seq(2, -2, by = -.1)
-
-x_train_vars <- model.matrix(length~. , train)[,-1]
-x_val_vars <- model.matrix(length~. , validation)[,-1]
-
-y_train_var <- train$length
-y_val_var <- validation$length
-
-# to .cv or not to .cv?
-cv_output <- cv.glmnet(x_train_vars, y_train_var, alpha = 1, lambda = lambda_seq)
-best_lam <- cv_output$lambda.min
-
-lasso_best <- glmnet(x_train_vars, y_train_var, alpha = 1, lambda = best_lam)
-pred <- predict(lasso_best, s = best_lam, newx = x_val_vars)
-
-rss <- sum((pred - y_val_var) ^ 2)
-tss <- sum((y_val_var - mean(y_val_var)) ^ 2)
-rsq <- 1 - rss/tss
-rmse <- sqrt(sum((pred - y_val_var)^2)/nrow(pred))
-printf("RMSE: %f, R2: %f", rmse, rsq)
 ```
 
 

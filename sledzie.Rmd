@@ -1,6 +1,6 @@
 ---
 title: "Śledzie"
-author: "Urszula Walińska, Julia Będziechowska"
+author: "Urszula Walińska 127216, Julia Będziechowska 127306"
 date: '`r format(Sys.Date(), "%d.%m.%Y")`'
 output: html_document
 ---
@@ -20,12 +20,21 @@ Zabawa była przednia
 
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
 
+### Sub paragraph <a name="subparagraph1"></a>
 Lista wykorzystanych bibliotek:
+
+- dplyr  
+- ggplot2  
+- corrplot  
+- plotly
+
 ```{r, echo=FALSE, results='hide', message=FALSE}
 library(corrplot)
 library(dplyr)
 library(ggplot2)
 library(plotly)
+
+knitr::opts_chunk$set(cache=TRUE)
 
 printf <- function(...) invisible(print(sprintf(...)))
 ```
@@ -33,7 +42,7 @@ printf <- function(...) invisible(print(sprintf(...)))
 (.packages())
 ```
 
-Repeatable experiment:
+Kod zapewniający powtarzalność wyników przy każdym uruchomieniu raportu na tych samych danych:
 
 ```{r}
 set.seed(54321)
@@ -42,15 +51,20 @@ set.seed(54321)
 Wczytanie danych i podgląd postawowych informacji na temat zbioru danych: 
 
 ```{r}
-data <- read.csv("sledzie.csv")
-data <- data[-1] # skip 'X' index column
-all_rows_number <- nrow(data)
-str(data)
+raw_data <- read.csv("sledzie.csv")
+raw_data <- raw_data %>% 
+              rename(t = X)
+
+all_rows_number <- nrow(raw_data)
+str(raw_data)
 ```
 Z rezultatu wywołania funkcji `str` wynika, że niektóre kolumny zawierają znaki zapytania, co oznacza brakujące dane. Są to zmiene dotyczące dostępności planktonu i temperatury przy powierzchni wody. Dokładne informacje dotyczące brakujących danych z uwzględnieniem kolumn przedstawia poniższa komórka:
 ```{r}
-data[data == "?"] <- NA
-missing_rows <- data[!complete.cases(data),]
+raw_data[raw_data == "?"] <- NA
+missing_rows <- raw_data[!complete.cases(raw_data),]
+data <- raw_data[complete.cases(raw_data),]
+```
+```{r, echo=FALSE}
 for(cname in colnames(missing_rows)) { printf("%s: %d brakujących wartości", cname, sum(is.na(missing_rows[cname]))) }
 ```
 
@@ -58,25 +72,32 @@ Przetwarzanie brakujących wartości:
 
 Każdą brakującą wartość, oryginalnie reprezentowaną jako znak zapytania, zamieniamy na charakterystyczne dla języka R wyrażenie `NA`. Dzięki temu możliwe jest wykorzystanie funkcji `complete_cases`. 
 
-```{r}
-data <- data[complete.cases(data),]
-rows_number <- nrow(data)
-```
-
 Podsumowanie liczby wierszy w zbiorze danych przed i po pominięciu wierszy z brakującymi danymi:
 ```{r, echo=FALSE}
+rows_number <- nrow(data)
 printf("Przed: %d, po usunięciu wierszy zawierających '?': %d", all_rows_number, rows_number)
 ```
 
-? Komentarz
+## Podstawowe informacje o zbiorze danych <a name="podst_info"></a>
+Zbiór danych powstał na potrzeby analizy rozmiaru śledzi oceanicznich wyławianych w Europie, w zależności od warunków w jakich żyją. Zauważono bowiem, że na przestrzeni ostatnich lat ich rozmiar stopniowo maleje i zaczęto się tym faktem niepokoić. Do analizy zebrano pomiary śledzi i warunków w jakich żyją z ostatnich 60 lat. Dane były pobierane z połowów komercyjnych jednostek, a w ramach połowu jednej jednostki wybierano losowo od 50 do 100 sztuk trzyletnich śledzi.
+
+Wiersze w zbiorze są uporządkowane chronologicznie, dlatego przyjęto że liczba porządkująca wiersze będzie utożsamiana z czasem.
+
+/ # TODO dodac podstawowe statystyki?
+
 ```{r}
-data <- data.frame(sapply(data, as.numeric))
+str(raw_data)
+```
+Jak widać w rezultacie wywołania powyższej metody, oryginalne, surowe dane zawierają 52582 przykłady opisane przez 16 atrybutów (15 właściwych i 1 porządkujący). Ich dokładniejsza analiza zostanie przedstawiona w dalszej części raportu. W niektorych przypadkach możemy zaobserwować brak pomiaru wartości danego atrybutu oznaczony przez znak zapytania ("?"). Łącznie daje to nam około 10000 niepełnych przykładów, które zdecydowałyśmy się odfiltrować, aby ułatwić dalszą analizę. Z powodu braku niektórych wartości i oznaczenia ich przez "?" typ niektórych zmiennych został domyślnie ustawiony na Factor (typ wyliczeniowy, może być interpretowany jako kategoria). Widzimy jednak, że pozostałe wartości są numeryczne (całkowite lub niecałkowite), tak więc w dalszej analizie, po odfiltrowaniu niepełnych przykładów, dla ułatwienia zmienimy typ tych zmiennych na numeryczny. R domyślnie ustala typ zmiennych całkowitych na *integer*, a niecałkowitych na *numeric*.
+
+```{r}
+dim(data)
 ```
 
+Po odfiltrowaniu brakujących wartości, zbiór danych składa się z 42488 kompletnych przykładów, każdy opisany przez 16 atrybutów. Poniżej wyświetlonych zostało kilka przykładów ze zbioru.
 
-## Podstawowe informacje o zbiorze danych <a name="podst_info"></a>
 ```{r}
-str(data)
+head(data)
 ```
 
 ## Analiza wartości atrybutów <a name="atrybuty"></a>
@@ -138,7 +159,7 @@ Histogram dystrybucji zmiennej *length*, jak i postawowe statystyki które ją o
 analyze_distribution(numeric_data$cfin1, 'cfin1', "#1FE4EB")
 
 cfin_eq_min <- numeric_data$cfin1[numeric_data$cfin1 == min(numeric_data$cfin1)]
-min_ratio = nrow(data.frame(x=cfin_eq_min)) / nrow(numeric_data)
+min_ratio = nrow(data.frame(x=cfin_eq_min)) / rows_number
 printf("Procent dla którego zmienna osiągała wartość równą minimum: %f", min_ratio)
 ```
 Na histogramie dystrybucji zmiennej *cfin1* widoczna jest zdecydująca przewaga bardzo niskich wartości, bliskich minimum. W prawie 30% przypadkach wartość tej zmiennej wynosiła 2.0. Maksymalne zaobserwowane zagęszczenie wyniosło 40.0. Odchylenie standardowe jest wysokie i rozkład zmiennej nie przypomina żadnego charakterystycznego rozkładu.
@@ -292,20 +313,62 @@ printf("Odchylenie standardowe: %f", sd(numeric_data$nao))
 Zmienna *nao* jako jedyna przyjmuje wartości ujemne i dodatnie. Jest to zgodne z zakresem wartości jakie przyjmuje tzw. indeks NAO, który może reprezentować wystąpienie dodatniej lub ujemnej *fazy NAO*. Oscylacja północnoatlantycka jest zjawiskiem meteorologicznym wpływającym na klimat, które manifestuje się poprzez fluktuacje ciśnienia atmosferycznego, temperatury powietrza, prędkości wiatru, ilości opadów i innych parametrów [wikipedia(https://pl.wikipedia.org/wiki/Oscylacja_p%C3%B3%C5%82nocnoatlantycka)]. 
 Na histogramie widać, że rozkład tej zmiennej byłby zbliżony do normalnego, gdyby nie niska liczność wartości w przedziale -2 do -1. Zarówno wartości skrajnie niskie jak i wysokie występują stosunkowo rzadko. Średnia wartość jest bliska zeru. Ta zmienna także ma dość wysokie odchylenie standardowe.
 
-```{r}
-summary(data)
-```
-
 ## Korelacje między zmiennymi <a name="korelacje"></a>
 
 ```{r}
-corrplot(cor(data))
+corrplot(cor(numeric_data))
 ```
->>>>>>> 1cbae5090d9abdbeecdc42410329d1d01a84f4a5
+
+Obliczenie wartości współczynnika korelacji pomiędzy zmiennymi, a zwłaszcza korelacji zmiennej *length* z innymi może zdecydowanie pomóc w odnalezieniu ukrytych zależności prowadzącymi na przykład do odkrycia jakie czynniki mają wpływ na zmniejszenie długości śledzi w ostatnich latach. Współczynnik korelacji przyjmuje wartości od −1 (zupełna korelacja ujemna), przez 0 (brak korelacji) do +1 (zupełna korelacja dodatnia).
+
+Na powyższej macierzy korelacji możemy zaobserwować następujące zależności: 
+
+- silna korelacja dodatnia (około 0.9) pomiędzy zmiennymi *fbar* oraz *cumf*. Obywie te zmienne oznaczają ułamek pozostawionego narybku, *cumf* jest natomiast jego skumulowaną roczną wersją, a więc logicznie, wraz ze wzrostem *fbar* rośnie *cumf* tak więc jest to korelacja dodatnia
+- silna korelacja ujemna (około -0.8) pomiędzy zmiennymi *totaln* i *cumf*, oraz nieco słabsza (około -0.6) *totaln* i *fbar*. *totaln* oznacza łączną liczbę śledzi złowionych w ramach połowu. Jest to oczywiście wartość odwrotnie proporcjonalna do ułamku pozostawionego narybku w danym czasie.  
+- korelacja dodatnia *chel1* i *lcop1* oraz *chel2* i *lcop2*, które oznaczają zagęszczenie różnych gatunków planktonu. Być może sugeruje to fakt iż wymienione powyżej gatunki kooperują ze sobą i dlatego żyją zagęszczenie działa w sposób pozytywny na zagęszczenie drugich.  
+- możemy dostrzec również słabą ujemną zależność długości śledzia od czasu, co potwierdza fakt, iż z czasem ich rozmiar maleje. Widzimy także nieco mocniejszą ujemną zależnośc czasu oraz liczby złowionych śledzi.  
+- możemy również dostrzec dość silną ujemną zależność rozmiaru śledzi oraz *sst* oznaczające temperaturę przy powierzchni wody. Oznacza to że wzraz ze wzrostem temperatury rozmiar śledzi się zmniejsza. 
+- natomiast zwiększenie temperatury na powierzchni wody wykazuje pozytywną korelację z *nao* - oscylacją północno atlantycką. W związku z tym, być może to ona właśnie przyczynia się do jej ocieplenia.
 
 ## Zmiana rozmiaru śledzi w czasie <a name="rozmiar"></a>
 ```{r}
-p <- plot_ly(data[sample(nrow(data), 1000), 1:2], x = any, y = ~length, type = 'scatter', mode = "markers")
+length_in_time <- raw_data[sample(nrow(raw_data), 1000), 1:2]
+length_in_time <- data.frame(sapply(length_in_time, as.numeric))
+
+p <- ggplot(data = length_in_time, aes(x = t, y = length)) +
+  geom_point() +
+  geom_smooth()
+
+p <- ggplotly(p)
+
 p
 ```
+
+Powyższy interaktywny wykres przedstawia zależność rozmiaru śledzi od czasu. Z względów zasobowych pobrana została próbka 1000 przykładów spośród wszystkich 52582 (aby uzyskać lepsze uogólnienie, było to możliwe, ponieważ każdy rekord zawierał pomiar długości śledzia). Aby wyświetlić dokładną wartość interesującego użytkownika punktu, może on najechać myszką na dany obszar i odczytać wartość.
+
+*Smoothed conditional means*, czyli wygładzona średnia długości śledzia w czasie została dodana do wykresu, aby łatwiej było zauważyć wzorce występujące w danych. Do wygładzania została użyta domyślna metoda *gam* oraz formuła *y ~ s(x, bs = "cs")*. Poświata która znajduje się pod wygładzoną średnią oznacza niski oraz wysoki punktowy przedział ufności wokół średniej.
+
+Dzięki linii trendu na wykresie można z łatwością zaobserować, że do około 15000 przykładu rozmiar śledzia rósł, a później zaczął stopniowo spadać, aż osiągnął średnie minimum w ostatnim przykładzie.
+
+## Przygotowanie zbioru trenującego i testowego
+```{r, echo=FALSE}
+TRAIN_PERCENT <- 0.8
+
+train_size <- floor(TRAIN_PERCENT * rows_number)
+train_idx <- sample(seq_len(rows_number), size = train_size)
+
+train <- numeric_data[train_idx,]
+test <- numeric_data[-train_idx,]
+
+printf("Rozmiar zbioru trenującego: %d, testowego: %d", nrow(train), nrow(test))
+```
+
+## Regresja liniowa <a name="linear-regression"></a>
+```{r, echo=FALSE, results='hide'}
+model <- lm(length ~ ., data = numeric_data)
+summary(model)
+# residual standard error: 1.362 on 52567 degrees of freedom
+
+```
+
 

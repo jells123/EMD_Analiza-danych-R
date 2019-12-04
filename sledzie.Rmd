@@ -393,8 +393,6 @@ printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)
 ```
 
 ```{r}
-#install.packages("glmnet")
-
 lambda_seq <- 10^seq(2, -2, by = -.1)
 
 x_train_vars <- model.matrix(length~. , train)[,-1]
@@ -418,4 +416,32 @@ printf("RMSE: %f, R2: %f", rmse, rsq)
 ```
 
 
+```{r}
+list.of.fits <- list()
+results <- data.frame()
+
+for (i in 0:10) {
+  fit.name <- paste0("alpha", i/10)
+  
+  list.of.fits[[fit.name]] <-
+    cv.glmnet(x_train_vars, y_train_var, type.measure="mse", alpha=i/10, 
+      family="gaussian")
+  
+  ## Use each model to predict 'y' given the Testing dataset
+  predicted <- 
+    predict(list.of.fits[[fit.name]], 
+      s=list.of.fits[[fit.name]]$lambda.1se, newx=x_val_vars)
+  
+  ## Calculate the Mean Squared Error...
+  rss <- sum((pred - y_val_var) ^ 2)
+  tss <- sum((y_val_var - mean(y_val_var)) ^ 2)
+  rsq <- 1 - rss/tss
+  rmse <- sqrt(mean((y_val_var - predicted)^2))
+  
+  ## Store the results
+  temp <- data.frame(alpha=i/10, rmse=rmse, rsq=rsq, fit.name=fit.name)
+  results <- rbind(results, temp)
+}
+print(results)
+```
 

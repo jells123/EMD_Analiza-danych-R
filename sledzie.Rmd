@@ -34,6 +34,7 @@ library(dplyr)
 library(ggplot2)
 library(plotly)
 library(glmnet)
+library(gbm)
 
 knitr::opts_chunk$set(cache=TRUE)
 
@@ -175,26 +176,6 @@ analyze_distribution(numeric_data$cfin2, 'cfin2', "#2D8F92")
 ```
 W przypadku zmiennej *cfin2* także wiele razy zaobserwowano wartości bliskie minimum, jednak nie tak dużo jak w przypadku *cfin1*. Średnia jak i mediana są w tym przypadku wyższe. Rozpiętość zmiennej jest zbliżona: wartość minimalna wynosi 2.0 a maksymalna 49.0. Zauważalne są trzy słupki histogramu znacznie wyższe od pozostałych. Zmienna ma niestandardowy rozkład i wysokie odchylenie standardowe. 
 
-```{r echo=FALSE}
-# does not work! damn!
-two_density_plots <- function(df, c1, c2) {
-  df1 <- data.frame(halo=select(df, c1), label=c1)
-  df2 <- data.frame(halo=select(df, c2), label=c2)
-  joined <- rbind(df1, df2)
-  return(ggplot(joined, aes(value, fill=label)) + geom_density(alpha = 0.5))
-}
-
-# TODO try to replace with BOXPLOTS for all cf1in... chal etc at once
-cfin1 <- data.frame(value = numeric_data$cfin1, label = 'cfin1')
-cfin2 <- data.frame(value = numeric_data$cfin2, label = 'cfin2')
-
-planktons <- rbind(cfin1, cfin2)
-p <- ggplot(planktons, aes(value, fill=label)) + geom_density(alpha = 0.5)
-print(p + ggtitle("Histogram gęstości prawdopodobieństwa zmiennych cfin1 i cfin2"))
-```
-
-Dystrybucje zmiennych *cfin1* i *cfin2*, odpowiadające zagęszczeniu planktonu dwóch podgatunków Calanus finmarchicus przedstawiono na jednym wykresie, dzięki czemu można zaobserwować że te dystrybucje mają podobne cechy. Różnią się jedynie dla wartości minimalnych i maksymalnych, oprócz tego ich rozkłady gęstości prawdopodobieństwa są nieregularne. 
-
 ### Dostępność planktonu -  zagęszczenie Calanus helgolandicus <a name="attr_chel"></a>
 ```{r echo=FALSE}
 analyze_distribution(numeric_data$chel1, 'chel1', "#21DB59")
@@ -205,17 +186,6 @@ Histogram dystrybucji zmiennej *chel1* ukazuje, że ta zmienna także ma niestan
 analyze_distribution(numeric_data$chel2, 'chel2', "#1D9E44")
 ```
 Podobnie dla zmiennej *chel2*, rozkład jest nieregularny i odchylenie standardowe jest wysokie. Ta zmienna dostępności planktonu ma stosunkowo wysoką średnią. Widoczne są dwa wysokie słupki, tym razem część wartości kumuluje się około liczby 24 (przedział 23-24) i 50 (przedział 49-50). 
-
-```{r echo=FALSE}
-chel1 <- data.frame(value = numeric_data$chel1, label = 'chel1')
-chel2 <- data.frame(value = numeric_data$chel2, label = 'chel2')
-
-planktons <- rbind(chel1, chel2)
-p <- ggplot(planktons, aes(value, fill=label)) + geom_density(alpha = 0.5)
-print(p + ggtitle("Histogram gęstości prawdopodobieństwa zmiennych chel1 i chel2"))
-```
-
-Na powyższym histogramie zaprezentowano histogramy gęstości prawdopodobieństwa dla *cfin1* i *cfin2*. ???
 
 ### Dostępność planktonu -  zagęszczenie widłonogów <a name="attr_lcop"></a>
 ```{r echo=FALSE}
@@ -228,14 +198,15 @@ analyze_distribution(numeric_data$lcop2, 'lcop2', "#C43F3F")
 ```
 Także w przypadku zmiennej *lcop2*, jej rozkład jest nieregularny i jej wartości kumulują się w wybranych przedziałach (20-21 oraz 51-52). Odchylenie standardowe jest ponownie wysokie. Zakres wartości tej zmiennej jest podobny jak w przypadku poprzednich zmiennych opisujących dostępność planktonu. 
 
-```{r echo=FALSE}
-lcop1 <- data.frame(value = numeric_data$lcop1, label = 'lcop1')
-lcop2 <- data.frame(value = numeric_data$lcop2, label = 'lcop2')
+```{r , echo=FALSE} 
+data_stacked <- stack(numeric_data)
+planktons <- data_stacked[(data_stacked['ind'] == 'cfin1' | data_stacked['ind'] == 'cfin2' | data_stacked['ind'] == 'chel1' | data_stacked['ind'] == 'chel2' | data_stacked['ind'] == 'lcop1' | data_stacked['ind'] == 'lcop2'),]
+p <- ggplot(planktons, aes(x = ind, y = values, fill=ind)) + geom_boxplot(notch=TRUE, outlier.colour="red", outlier.shape=8, outlier.size=4)
 
-planktons <- rbind(lcop1, lcop2)
-p <- ggplot(planktons, aes(value, fill=label)) + geom_density(alpha = 0.5)
-print(p + ggtitle("Histogram gęstości prawdopodobieństwa zmiennych lcop1 i lcop2"))
+print(p + ggtitle("Wykresy pudełkowe dla zmiennych opisujących dostępność planktonu") )
 ```
+
+Z uwagi na to, że sześć zmiennych opisujących dostępność planktonu ma podobne charakterystyki (co wynika z tego, co reprezentują), na powyższym wykresie zbiorczo przedstawiono odpowiadające im wykresy pudełkowe. Na wykresie nie są widoczne żadne wartości skrajne, tzw. outliery. Zmienne charakteryzują się podobną rozpiętością, a ich średnie nieznacznie się różnią. Można podejrzewać, że plankton związany z zmienną *cfin1* jest zazwyczaj najmniej liczny, a dominującymi gatunkami są *chel2* i *lcop2*. 
 
 ### Natężenie połowów w regionie (fbar) [ułamek pozostawionego narybku] <a name="attr_fbar"></a>
 
@@ -255,7 +226,7 @@ print(p + ggtitle("Histogram liczebności zmiennej 'recr'"))
 summary(numeric_data$recr)
 printf("Odchylenie standardowe: %f", sd(numeric_data$recr))
 ```
-Zmienna *recr* przyjmuje bardzo wysokie wartości, są to liczby rzędu kilkuset tysięcy. Zaobserwowane maksimum wynosi ponad półtora miliona. Również w tym przypadku odchylenie standardowe jest wysokie. Przeważają wartości rzędu 400 000 śledzi. Zmienna przyjmuje bardzo rożne wartości co jest stosunkowo zaskakujące, biorąc pod uwagę co reprezentuje ta zmienna. Z histogramu wynika, że zdarzały się lata które skutowały w bardzo dużej liczbie narybku, nawet przekraczające średnią dwukrotnie. 
+Zmienna *recr* przyjmuje bardzo wysokie wartości, są to liczby rzędu kilkuset tysięcy. Zaobserwowane maksimum wynosi ponad półtora miliona. Również w tym przypadku odchylenie standardowe jest wysokie. Przeważają wartości rzędu 400 000 śledzi. Zmienna przyjmuje bardzo rożne wartości co jest stosunkowo zaskakujące, biorąc pod uwagę co reprezentuje ta zmienna. Z histogramu wynika, że zdarzały się lata które skutowały w bardzo dużej liczbie narybku, nawet przekraczające średnią dwukrotnie. Można wyróżnić trzy grupy słupków na histogramie, oddzielone przerwami, tj. brakiem wystąpień. Pierwsza z nich jest najbardziej liczna.
 
 ### Łączne roczne natężenie połowów w regionie (cumf) [ułamek pozostawionego narybku] <a name="attr_cumf"></a>
 
@@ -265,7 +236,7 @@ print(p + ggtitle("Histogram liczebności zmiennej 'cumf'"))
 summary(numeric_data$cumf)
 printf("Odchylenie standardowe: %f", sd(numeric_data$cumf))
 ```
-Zmienna `cumf` jest powiązana ze zmienną *fbar* - natężenie połowów w regionie, ponieważ dotyczy tej samej obserwacji (ułamku pozostawionego narybku), tylko kumuluje wszystkie wartości zaobserwowane w danym roku. Średnie łączne natężenie połowów wynosi około 23% pozostawionego narybku. Jest to mniej niż wynika ze zmiennej *fbar*. Można zaobserwować że mimo wystąpienia dla zmiennej *fbar* wartości skrajnie wysokich, w tym przypadku zakres wartości zmiennej jest już mniejszy. Maksymalne łączne rozczne natężenie połowów w regionie wynosiło niecałe 40%.
+Zmienna *cumf* jest powiązana ze zmienną *fbar* - natężenie połowów w regionie, ponieważ dotyczy tej samej obserwacji (ułamku pozostawionego narybku), tylko kumuluje wszystkie wartości zaobserwowane w danym roku. Średnie łączne natężenie połowów wynosi około 23% pozostawionego narybku. Jest to mniej niż wynika ze zmiennej *fbar*. Można zaobserwować że mimo wystąpienia dla zmiennej *fbar* wartości skrajnie wysokich, w tym przypadku zakres wartości zmiennej jest już mniejszy. Maksymalne łączne rozczne natężenie połowów w regionie wynosiło niecałe 40%.
 
 ### Łączna liczba ryb złowionych w ramach połowu (totaln) [liczba śledzi] <a name="attr_totaln"></a>
 
@@ -384,8 +355,9 @@ VALIDATION_PERCENT <- 0.3
 train_size <- floor(TRAIN_PERCENT * rows_number)
 train_idx <- sample(seq_len(rows_number), size = train_size)
 
-train <- numeric_data[train_idx,]
-test <- numeric_data[-train_idx,]
+# drop "t"
+train <- numeric_data[train_idx,-1]
+test <- numeric_data[-train_idx,-1]
 
 validation_size <- floor(VALIDATION_PERCENT * nrow(train))
 validation_idx <- sample(seq_len(nrow(train)), size = validation_size)
@@ -417,8 +389,47 @@ summary(lm_mod)
 printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)), calculate_rsq(pred, validation$length))
 ```
 
-
+## Regresja nieliniowa v1  <a name="nonlinear-regression1"></a>
 ```{r}
+lm_mod <- lm(length ~ poly(cfin1, 2) + poly(cfin2, 2) + poly(chel1, 2) + poly(chel2, 2)  + poly(lcop1, 2)  + poly(lcop2, 2) + poly(fbar, 2) + poly(recr, 2) + poly(cumf, 2) + poly(totaln, 2) + poly(sst, 2) + poly(sal, 2) + poly(xmonth, 2) + poly(nao, 2) , data = train)
+
+#lm_mod <- lm(length ~ poly(cfin1, 2) + poly(cfin2, 2) + poly(chel1, 2) + poly(chel2, 2)  + poly(lcop1, 2) + poly(fbar, 2) + poly(recr, 2) + poly(cumf, 2) + poly(totaln, 2) + poly(sst, 2) + poly(sal, 2) + poly(xmonth, 2) + poly(nao, 2) , data = train)
+
+pred <- predict(lm_mod, validation)
+printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)), calculate_rsq(pred, validation$length))
+summary(lm_mod)
+```
+
+## Regresja nieliniowa v2 <a name="nonlinear-regression2"></a>
+```{r}
+lm_mod <- lm(length ~ poly(cfin1, 3) + poly(cfin2, 3) + poly(chel1, 3) + poly(chel2, 3)  + poly(lcop1, 3)  + poly(lcop2, 3) + poly(fbar, 3) + poly(recr, 3) + poly(cumf, 3) + poly(totaln, 3) + poly(sst, 3) + poly(sal, 3) + poly(xmonth, 3) + poly(nao, 3) , data = train)
+
+#lm_mod <- lm(length ~ poly(cfin1, 2) + poly(cfin2, 2) + poly(chel1, 2) + poly(chel2, 2)  + poly(lcop1, 2) + poly(fbar, 2) + poly(recr, 2) + poly(cumf, 2) + poly(totaln, 2) + poly(sst, 2) + poly(sal, 2) + poly(xmonth, 2) + poly(nao, 2) , data = train)
+
+pred <- predict(lm_mod, validation)
+printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)), calculate_rsq(pred, validation$length))
+summary(lm_mod)
+```
+
+## Regresja Lasso <a name="lasso-regression"></a>
+```{r}
+#install.packages("glmnet")
+
+lambda_seq <- 10^seq(2, -2, by = -.1)
+
+x_train_vars <- model.matrix(length~. , train)[,-1]
+x_val_vars <- model.matrix(length~. , validation)[,-1]
+
+y_train_var <- train$length
+y_val_var <- validation$length
+
+# to .cv or not to .cv?
+cv_output <- cv.glmnet(x_train_vars, y_train_var, alpha = 1, lambda = lambda_seq)
+best_lam <- cv_output$lambda.min
+
+lasso_best <- glmnet(x_train_vars, y_train_var, alpha = 1, lambda = best_lam)
+pred <- predict(lasso_best, s = best_lam, newx = x_val_vars)
+
 list.of.fits <- list()
 results <- data.frame()
 
@@ -453,3 +464,46 @@ for (i in 0:10) {
 print(results)
 ```
 
+## Gradient Boosting Machine <a name="yoyo"></a>
+Kolejnym algorytmem który można wykorzystać do zadania regresji jest Gradient Boosting Machine. Jest to algorytm z rodziny tak zwanych *ensemble methods*, metod wykorzystujących wiele algorytmów uczenia celem uzyskania trafniejszych wyników. 
+
+W rozważanym problemie skorzystałyśmy z kombinacji drzew decyzyjnych, co jest często spotykanym rozwiązaniem w kontekście Gradient Boosting Machine. Takie rozwiązanie jest zaimplementowane w bibliotece `gbm`.
+
+Liczba drzew generowanych w modelu wynosi 2000. Każde drzewo opisuje parametr `interaction.depth`, który ma wartość 4 i określa że każde drzewo jest małym drzewem z 4 podziałami. Parametr `shrinkage` jest swego rodzaju prędkością uczenia (*learning rate*). 
+
+```{r, cache=TRUE} 
+
+NUM_TREES <- 2000
+model <- gbm(length ~ . ,data = train,distribution = "gaussian",n.trees = NUM_TREES, shrinkage = 0.1, interaction.depth = 4)
+model
+```
+
+```{r}
+summary(model)
+```
+
+```{r}
+n_trees_seq = seq(from=100, to=NUM_TREES, by=100)
+pred <- predict(model, validation, n.trees=n_trees_seq)
+
+mses <- with(validation, apply( (pred - length) ^ 2, 2, mean))
+rmses <- sqrt(mses)
+
+head(rmses)
+```
+
+```{r}
+tail(rmses)
+```
+
+
+```{r}
+#plot(n_trees_seq, mses, pch=19, col="blue", xlab="Number of Trees", ylab="Test Error", main="Efektywność boostingu na zbiorze walidacyjnym")
+```
+
+
+
+
+
+=======
+>>>>>>> 489a3dc45b730402891129474f8664d8e7e668f4

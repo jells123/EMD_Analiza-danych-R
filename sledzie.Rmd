@@ -353,6 +353,7 @@ Dzięki linii trendu na wykresie można z łatwością zaobserować, że do oko�
 ## Przygotowanie zbioru trenującego i testowego
 ```{r, echo=FALSE}
 TRAIN_PERCENT <- 0.8
+VALIDATION_PERCENT <- 0.3
 
 train_size <- floor(TRAIN_PERCENT * rows_number)
 train_idx <- sample(seq_len(rows_number), size = train_size)
@@ -360,15 +361,51 @@ train_idx <- sample(seq_len(rows_number), size = train_size)
 train <- numeric_data[train_idx,]
 test <- numeric_data[-train_idx,]
 
-printf("Rozmiar zbioru trenującego: %d, testowego: %d", nrow(train), nrow(test))
+validation_size <- floor(VALIDATION_PERCENT * nrow(train))
+validation_idx <- sample(seq_len(nrow(train)), size = validation_size)
+validation <- train[validation_idx,]
+
+print("Rozmiary zbiorów:")
+printf("Trenujący: %d | Walidacyjny: %d | Testowy: %d", nrow(train), nrow(validation), nrow(test))
 ```
 
 ## Regresja liniowa <a name="linear-regression"></a>
 ```{r, echo=FALSE, results='hide'}
-model <- lm(length ~ ., data = numeric_data)
+lm_mod <- lm(length ~ ., data = train)
+pred <- predict(lm_mod, test)
 summary(model)
 # residual standard error: 1.362 on 52567 degrees of freedom
+```
 
+```{r}
+#install.packages("glmnet")
+library(glmnet)
+
+lambda_seq <- 10^seq(2, -2, by = -.1)
+
+x_train_vars <- model.matrix(length~. , train)[,-1]
+x_val_vars <- model.matrix(length~. , validation)[,-1]
+
+y_train_var <- train$length
+y_val_var <- validation$length
+
+# to .cv or not to .cv?
+cv_output <- glmnet(x_train_vars, y_train_var, alpha = 1, lambda = lambda_seq)
+best_lam <- cv_output$lambda.min
+
+lasso_best <- glmnet(x_train_vars, y_train_var, alpha = 1, lambda = best_lam)
+pred <- predict(lasso_best, s = best_lam, newx = x_val_vars)
+final <- cbind(y_val_var, pred)
+
+rss <- sum((pred - y_val_var) ^ 2)
+tss <- sum((y_val_var - mean(y_val_var)) ^ 2)
+rsq <- 1 - rss/tss
+rmse <- sqrt(sum((pred - y_val_var)^2) / nrow(pred))
+```
+
+```{r}
+print("LASSO REGRESSION:")
+printf("RMSE: %f, R2: %f", rmse, rsq)
 ```
 
 

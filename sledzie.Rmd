@@ -47,14 +47,18 @@ data <- data[-1] # skip 'X' index column
 all_rows_number <- nrow(data)
 str(data)
 ```
-Z rezultatu wywołania funkcji `str` wynika, że niektóre kolumny zawierają znaki zapytania, co oznacza brakujące dane. Są to zmiene dotyczące dostępności planktonu i temperatury przy powierzchni wody.
+Z rezultatu wywołania funkcji `str` wynika, że niektóre kolumny zawierają znaki zapytania, co oznacza brakujące dane. Są to zmiene dotyczące dostępności planktonu i temperatury przy powierzchni wody. Dokładne informacje dotyczące brakujących danych z uwzględnieniem kolumn przedstawia poniższa komórka:
+```{r}
+data[data == "?"] <- NA
+missing_rows <- data[!complete.cases(data),]
+for(cname in colnames(missing_rows)) { printf("%s: %d brakujących wartości", cname, sum(is.na(missing_rows[cname]))) }
+```
 
 Przetwarzanie brakujących wartości:
 
 Każdą brakującą wartość, oryginalnie reprezentowaną jako znak zapytania, zamieniamy na charakterystyczne dla języka R wyrażenie `NA`. Dzięki temu możliwe jest wykorzystanie funkcji `complete_cases`. 
 
 ```{r}
-data[data == "?"] <- NA
 data <- data[complete.cases(data),]
 rows_number <- nrow(data)
 ```
@@ -106,6 +110,9 @@ numeric_data <- data.frame(sapply(data, as.numeric))
 ### Długość złowionego śledzia (length) <a name="attr_length"></a>
 
 ```{r echo=FALSE}
+
+# TODO: ADD BOXPLOTS!
+
 analyze_distribution <- function(values, label, hist_color="#28A5A9") {
   df <- data.frame(v=values)
   p <- ggplot(df, aes(x=v)) + geom_bar(fill=hist_color, color='black')

@@ -422,11 +422,17 @@ printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)
 list.of.fits <- list()
 results <- data.frame()
 
+x_train_vars <- model.matrix(length~. , train)[,-1]
+x_val_vars <- model.matrix(length~. , validation)[,-1]
+
+y_train_var <- train$length
+y_val_var <- validation$length
+
 for (i in 0:10) {
   fit.name <- paste0("alpha", i/10)
   
   list.of.fits[[fit.name]] <-
-    cv.glmnet(x_train_vars, y_train_var, type.measure="mse", alpha=i/10, 
+    glmnet(x_train_vars, y_train_var, type.measure="mse", alpha=i/10, 
       family="gaussian")
   
   ## Use each model to predict 'y' given the Testing dataset

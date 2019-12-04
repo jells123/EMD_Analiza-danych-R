@@ -33,6 +33,7 @@ library(corrplot)
 library(dplyr)
 library(ggplot2)
 library(plotly)
+library(glmnet)
 
 knitr::opts_chunk$set(cache=TRUE)
 
@@ -45,7 +46,7 @@ printf <- function(...) invisible(print(sprintf(...)))
 Kod zapewniający powtarzalność wyników przy każdym uruchomieniu raportu na tych samych danych:
 
 ```{r}
-set.seed(54321)
+set.seed(13)
 ```
 
 Wczytanie danych i podgląd postawowych informacji na temat zbioru danych: 
@@ -370,16 +371,29 @@ printf("Trenujący: %d | Walidacyjny: %d | Testowy: %d", nrow(train), nrow(valid
 ```
 
 ## Regresja liniowa <a name="linear-regression"></a>
-```{r, echo=FALSE, results='hide'}
+```{r, echo=FALSE}
+calculate_rsq <- function(pred, actual) {
+  rss <- sum((pred - actual) ^ 2)
+  tss <- sum((actual - mean(actual)) ^ 2)
+  return(1 - rss/tss)
+}
+
+calculate_rmse <- function(pred, actual, N) {
+  return(sqrt(sum((pred - actual) ^ 2) / N))
+}
+
 lm_mod <- lm(length ~ ., data = train)
-pred <- predict(lm_mod, test)
-summary(model)
+pred <- predict(lm_mod, validation)
+summary(lm_mod)
 # residual standard error: 1.362 on 52567 degrees of freedom
 ```
 
 ```{r}
+printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)), calculate_rsq(pred, validation$length))
+```
+
+```{r}
 #install.packages("glmnet")
-library(glmnet)
 
 lambda_seq <- 10^seq(2, -2, by = -.1)
 
@@ -390,22 +404,18 @@ y_train_var <- train$length
 y_val_var <- validation$length
 
 # to .cv or not to .cv?
-cv_output <- glmnet(x_train_vars, y_train_var, alpha = 1, lambda = lambda_seq)
+cv_output <- cv.glmnet(x_train_vars, y_train_var, alpha = 1, lambda = lambda_seq)
 best_lam <- cv_output$lambda.min
 
 lasso_best <- glmnet(x_train_vars, y_train_var, alpha = 1, lambda = best_lam)
 pred <- predict(lasso_best, s = best_lam, newx = x_val_vars)
-final <- cbind(y_val_var, pred)
 
 rss <- sum((pred - y_val_var) ^ 2)
 tss <- sum((y_val_var - mean(y_val_var)) ^ 2)
 rsq <- 1 - rss/tss
-rmse <- sqrt(sum((pred - y_val_var)^2) / nrow(pred))
-```
-
-```{r}
-print("LASSO REGRESSION:")
+rmse <- sqrt(sum((pred - y_val_var)^2)/nrow(pred))
 printf("RMSE: %f, R2: %f", rmse, rsq)
 ```
+
 
 

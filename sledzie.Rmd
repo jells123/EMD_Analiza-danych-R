@@ -10,18 +10,18 @@ output: html_document
 2. [Wczytanie i przygotowanie danych](#wczytanie)
 3. [Podstawowe informacje o zbiorze danych](#podst_info)
 4. [Analiza wartości atrybutów](#wartosci_atryb)
-    1. Długość złowionego śledzia
-    2. Dostępność planktonu (cfin)
-    3. Dostępność planktonu (chel)
-    4. Dostępność planktonu (lcop)
-    5. Natężenie połowów w regionie (fbar) 
-    6. Roczny narybek (recr)
-    7. Łączne roczne natężenie połowów w regionie (cumf)
-    8. Łączna liczba ryb złowionych w ramach połowu (totaln)
-    9. Temperatura przy powierzchni wody (sst)
-    10. Poziom zasolenia wody (sal) 
-    11. Miesiąc połowu (xmonth) 
-    12. Oscylacja północnoatlantycka (nao)
+    1. [Długość złowionego śledzia (length)](#attr_length)
+    2. [Dostępność planktonu (cfin)](#attr_cfin)
+    3. [Dostępność planktonu (chel)](#attr_chel1)
+    4. [Dostępność planktonu (lcop)](#attr_lcop)
+    5. [Natężenie połowów w regionie (fbar)](#attr_fbar)
+    6. [Roczny narybek (recr)](#attr_recr)
+    7. [Łączne roczne natężenie połowów w regionie (cumf)](#attr_cumf)
+    8. [Łączna liczba ryb złowionych w ramach połowu (totaln)](#attr_totaln)
+    9. [Temperatura przy powierzchni wody (sst)](#attr_sst)
+    10. [Poziom zasolenia wody (sal)](#attr_sal)
+    11. [Miesiąc połowu (xmonth)](#attr_xmonth)
+    12. [Oscylacja północnoatlantycka (nao)](#attr_nao)
 5. [Korelacje między zmiennymi](#korelacje)
 6. [Zmiana rozmiaru śledzi w czasie](#rozmiar)
 7. [Regresor przewidujący rozmiar śledzia](#regresor)
@@ -29,19 +29,13 @@ output: html_document
     2. [Regresja liniowa](#linear-regression)
     3. [Regresja liniowa z regularyzacją (Ridge, Lasso i Elastic-Net)](#ela-regression)
     4. [Regresja nieliniowa (wielomianowa)](#nonlinear-regression)
-8. [Analiza ważności atrybutów najlepszego modelu regresji]
+    5. [Gradient Boosting Machine] (#gbm_model)
+8. [Analiza ważności atrybutów najlepszego modelu (Gradient Boosting Machine)](#gbm_analysis)
 
 ## Streszczenie analizy <a name="streszczenie"></a>
 Zabawa była przednia
 
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
-
-Lista wykorzystanych bibliotek:
-
-- dplyr  
-- ggplot2  
-- corrplot  
-- plotly
 
 ```{r, echo=FALSE, results='hide', message=FALSE}
 library(corrplot)
@@ -50,6 +44,7 @@ library(ggplot2)
 library(plotly)
 library(glmnet)
 library(gbm)
+library(lime)
 
 knitr::opts_chunk$set(cache=TRUE)
 
@@ -499,7 +494,8 @@ printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)
 Jak widać, model regresji wielomianowej wykorzystujące wszystkie atrybuty podniesione do 1, 2 oraz 3 potęgi myli się średnio o 1.26 centymetra w stosunku do prawdziwej długości śledzia, co daje nam lepszy wynik niż w przypadku regresji liniowej. Zgodnie z oczekiwaniami, model cechuje się lepszym dopasowaniem do danych, ze względu na fakt większego stopnia skoplikowania zależności między zmiennymi w rozpatrywanym przez nas problemie.
 W związku z tym faktem postanowiłyśmy również przetestować algorytm bardziej dla niego odpowiedni.
 
-## Gradient Boosting Machine <a name="yoyo"></a>
+## Gradient Boosting Machine <a name="gbm_model"></a>
+
 Kolejnym algorytmem który można wykorzystać do zadania regresji jest Gradient Boosting Machine. Jest to algorytm z rodziny tak zwanych *ensemble methods*, metod wykorzystujących wiele algorytmów uczenia celem uzyskania trafniejszych wyników. 
 
 W rozważanym problemie skorzystałyśmy z kombinacji drzew decyzyjnych, co jest często spotykanym rozwiązaniem w kontekście Gradient Boosting Machine. Takie rozwiązanie jest zaimplementowane w bibliotece `gbm`.
@@ -548,11 +544,11 @@ tail(rsq)
 ```
 
 
-```{r}
-summary(model)
-```
+## Analiza ważności atrybutów najlepszego modelu (Gradient Boosting Machine) <a name="gbm_analysis></a>
 
-## And the winner is... GRADIENT BOOSTING MACHINE!
+Modelem dla którego uzyskano najlepsze wyniki na zbiorze walidacyjnym okazał się model Gradient Boosting Machine z drzewami decyzyjnymi. W związku z tym, ten model został wykorzystany do predykcji długości śledzia w oparciu o dane atrybuty na zbiorze testowym.
+
+Poniżej zaprezentowano kod wywołujący predykcję na zbiorze testowym i wyliczający miary oceny tego modelu na tym zbiorze.
 
 ```{r}
 y_test_var <- test$length
@@ -568,18 +564,70 @@ tss <- sum((y_test_var - mean(y_test_var)) ^ 2)
 rsq <- 1 - rss/tss
 ```
 
+Wartości $RMSE$ dla ostatnich iteracji - modelu z największą liczbą drzew - zaprezentowano poniżej:
+
 ```{r, echo=FALSE}
 tail(rmses)
 ```
 
-```{r}
+Podobnie dla miary $R^2$:
+
+```{r, echo=FALSE}
 tail(rsq)
 ```
 
+Redukcję błędu $MSE$ na zbiorze testowym wraz z wzrostem liczby drzew przedstawia poniższy wykres:
+
 ```{r}
+plot(n_trees_seq, mses, pch=19, col="blue", xlab="Liczba drzew", ylab="MSE", main="Efektywność boostingu na zbiorze testowym")
+```
+
+
+Analizę ważności atrybutów wykorzystanych do przewidzenia długości śledzia można przeprowadzić z użyciem funkcji `summary`.
+
+```{r, echo=FALSE}
 summary(model)
 ```
 
-```{r}
-plot(n_trees_seq, mses, pch=19, col="blue", xlab="Number of Trees", ylab="Test Error", main="Efektywność boostingu na zbiorze testowym")
+Metodą ustalania ważności atrybutów wykorzystaną w tej funkcji (z takim modelem jak `gbm`) jest metoda `relative.influence`, czyli względny wpływ. W ten sposób, najbardziej istotne są zmienne o największym średnim spadku błędu średniokwadratowego ($MSE$), obliczanego przy każdym podziale w każdym drzewie.  
+
+Z wykresu wynika, że najistotniejszą zmienną jest **sst** odpowiadająca za temperaturę przy powierzchni wody. Z uprzedniej analizy wiadomo, że długość śledzia i temperatura przy powierzchni wody są negatywnie skorelowane, co oznacza że im wyższa temperatura tym krótsze są śledzie.
+
+Model uznał także zmienną *xmonth* za stosunkowo istotną mimo że nie była ona skorelowana z długością śledzia w żaden sposób. Równie ważne są zmienne reprezentujące roczny narybek (*recr*) i łączną liczbę ryb złowionych w ramach połowu (*totaln*). Zmienne dotyczące planktonu, potencjalnego pożywienia czy w pewien sposób wskaźnika jakości wody, są stosunkowo nieważne, podobnie jak zasolenie wody. 
+
+Do analizy ważności atrybutów modelu można wykorzystać także bibliotekę `lime`. Pozwala ona na przyjrzenie się pojedynczym obserwacjom i uzasadnienie otrzymanej wartości predykcji. W porównaniu do pierwszej wizualizacji, ukazującej średnie wpływy zmiennych na wynik, poniższe wykresy są dopasowane z dokładnością do jednego przykładu. 
+
+```{r, echo=FALSE, cache=TRUE}
+model_type.gbm <- function(x, ...) {
+  return("regression")
+}
+
+predict_model.gbm <- function(x, newdata, ...) {
+  pred <- predict(x, newdata, n.trees = x$n.trees)
+  return(as.data.frame(pred))
+}
+
+# get a few observations to perform local interpretation on
+local_obs <- train[sample(seq_len(nrow(train)), size = 6),]
+
+# apply LIME
+explainer <- lime(train, model)
+explanation <- explain(local_obs, explainer, n_features = 5)
+plot_features(explanation)
 ```
+
+Powyższe wykresy są zróżnicowane. Powtarza się w nich odwołanie do zmiennej *sst*. Bardzo silny wpływ ma zmienna *sst* na długość śledzia kiedy temperatura przy powierzchni wody jest bardzo wysoka - patrz `Case 36958`, wpływ ten jest wówczas negatywny. Z kolei pozytywny wpływ na długość śledzia zaobserwowano gdy temperatura nie przekraczała 14 stopni Celsjusza - `Case 29236`. W jednym z pokazanych przypadków największe znaczenie miała zmienna *recr*, a zaraz po niej istotna ponownie okazała się *sst*. 
+
+Bardziej skoncentrowaną reprezentację można uzyskać za pomocą metody `plot_explanations`, która pozwoli zwizualizować więcej przypadków jednocześnie.
+
+```{r, echo=FALSE, cache=TRUE}
+local_obs <- train[sample(seq_len(nrow(train)), size = 20),]
+
+explainer <- lime(train, model)
+explanation <- explain(local_obs, explainer, n_features = 5)
+plot_explanations(explanation)
+```
+
+Na tzw. mapie cieplnej (heat map) zaprezentowano 20 losowo wybranych przypadków z zbioru trenującego. Znaczący wpływ temperatury przy powierzchni o wysokiej wartości, przekraczającej 37 stopni, powtarza się w wielu przypadkach. Podobnie jest z temperaturą niską. Umiarkowany negatywny wpływ na długość śledzia ma *fbar* <= 0.227, co oznaczałoby że niskie natężenie połowów w regionie wiąże się z zmniejszeniem długości śledzia. 
+
+Należy przy okazji tej analizy podkreślić, że najlepsze wyniki udało się uzyskać implementując najbardziej skomplikowany z wykorzystywanych modeli. Bez wątpienia ma on większe zdolności do modelowania skomplikowanych zależności niż podstawowe modele regresji. Nie można jednak mówić tutaj o zbyt skomplikowanym modelu (overfitting), ponieważ poradził on sobie równie dobrze na zbiorze testowym który został użyty tylko raz, na koniec analizy.

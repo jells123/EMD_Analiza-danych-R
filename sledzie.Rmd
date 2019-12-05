@@ -27,8 +27,8 @@ output: html_document
 7. [Regresor przewidujący rozmiar śledzia](#regresor)
     1. [Przygotowanie zbioru trenującego i testowego](#podzial)
     2. [Regresja liniowa](#linear-regression)
-    3. [Regresja nieliniowa (wielomianowa)](#nonlinear-regression)
-    4. [Regresja Ridge, Lasso i Elastic-Net](#ela-regression)
+    3. [Regresja liniowa z regularyzacją (Ridge, Lasso i Elastic-Net)](#ela-regression)
+    4. [Regresja nieliniowa (wielomianowa)](#nonlinear-regression)
 8. [Analiza ważności atrybutów najlepszego modelu regresji]
 
 ## Streszczenie analizy <a name="streszczenie"></a>
@@ -411,29 +411,21 @@ Z wywołania metody `summary` można odczytać, które zmienne okazały się zna
 
 Prosty model regresji liniowej wykorzystujący wszystkie atrybuty jakimi można byłoby opisać zmienną *length* myli się średnio o 1.34 centymetry w stosunku do prawdziwej długości śledzia. 
 
-### Regresja nieliniowa (wielomianowa) <a name="nonlinear-regression"></a>
-```{r}
-lm_mod <- lm(length ~ poly(cfin1, 2) + poly(cfin2, 2) + poly(chel1, 2) + poly(chel2, 2)  + poly(lcop1, 2)  + poly(lcop2, 2) + poly(fbar, 2) + poly(recr, 2) + poly(cumf, 2) + poly(totaln, 2) + poly(sst, 2) + poly(sal, 2) + poly(xmonth, 2) + poly(nao, 2) , data = train)
+### Regresja liniowa z reularyzacją (Ridge, Lasso i Elastic-Net) <a name="ela-regression"></a>
+Regresję liniową można ulepszyć stosując regularyzację. W języku R dostępna jest paczka o nazwie *glmnet*, która pozwala na przetestowanie w prosty sposób różne rodzaje regresji z regularyzacją. W raporcie zaprezentowane zostaną 3 z nich:
 
-#lm_mod <- lm(length ~ poly(cfin1, 2) + poly(cfin2, 2) + poly(chel1, 2) + poly(chel2, 2)  + poly(lcop1, 2) + poly(fbar, 2) + poly(recr, 2) + poly(cumf, 2) + poly(totaln, 2) + poly(sst, 2) + poly(sal, 2) + poly(xmonth, 2) + poly(nao, 2) , data = train)
+- Ridge, stosowana aby zmniejszyć problem współliniowości w regresji liniowej, zapewniając ulepszoną wydajność w problemie estymacji parametrów. Model jest mniej podatny na szum w danych, za to zmniejszona jest jego zdolność dopasowania do danych. W funkcji straty dodatkowo występuje kara L2.
 
-pred <- predict(lm_mod, validation)
-printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)), calculate_rsq(pred, validation$length))
-summary(lm_mod)
-```
+- Lasso, używana do polepszenia dokładności predykcji poprzez wybór zmiennych dla niej istotnych (również kosztem mniejszego dopasowania do danych). W funkcji straty dodatkowo występuje kara L1.
 
-```{r}
-lm_mod <- lm(length ~ poly(cfin1, 3) + poly(cfin2, 3) + poly(chel1, 3) + poly(chel2, 3)  + poly(lcop1, 3)  + poly(lcop2, 3) + poly(fbar, 3) + poly(recr, 3) + poly(cumf, 3) + poly(totaln, 3) + poly(sst, 3) + poly(sal, 3) + poly(xmonth, 3) + poly(nao, 3) , data = train)
+- Elastic-Net, w której  występuje liniowa kombinacja kar L1 oraz L2 z wymienionych wcześniej metod.
 
-#lm_mod <- lm(length ~ poly(cfin1, 2) + poly(cfin2, 2) + poly(chel1, 2) + poly(chel2, 2)  + poly(lcop1, 2) + poly(fbar, 2) + poly(recr, 2) + poly(cumf, 2) + poly(totaln, 2) + poly(sst, 2) + poly(sal, 2) + poly(xmonth, 2) + poly(nao, 2) , data = train)
+Poprzez użycie funkcji `cv.glmnet` z parametrami `type.measure = "mse"` oraz `family = "gaussian"` będziemy trenować model regresji liniowej. Jednak oprócz standardowego minimalizowania sumy kwadratów odchyłek dodana jest także kara w postaci:
+$$\lambda *[\alpha*(|var_1| + ... + |var_n|) + (1-\alpha)*(var_1^2 + ... + var_n^2)]$$
+Wartość zmiennej $\lambda$ dobierana jest metodą kroswalidacji. Pierwszy człon powyższej formuły odpowiada za karę L1 pomnożoną przez współczynnik $\alpha$, drugi za karę L2 pomnożoną przez współczynnik $1-\alpha$. Dzięki temu dobierając różne wartości parametru $\alpha$ jesteśmy w stanie przetestować zarówno regularyzację Ridge, jak i Lasso oraz Elastic-Net. 
+Dla $\alpha=0$ otrzymujemy Ridge, dla $\alpha=1$ Lasso, a dla pozostałych wartości $\alpha$ Elastic-Net.
 
-pred <- predict(lm_mod, validation)
-printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)), calculate_rsq(pred, validation$length))
-summary(lm_mod)
-```
-
-### Regresja Ridge, Lasso i Elastic-Net <a name="ela-regression"></a>
-```{r}
+```{r, echo=FALSE}
 x_train_vars <- model.matrix(length~. , train)[,-1]
 x_val_vars <- model.matrix(length~. , validation)[,-1]
 
@@ -450,23 +442,62 @@ for (i in 0:10) {
     cv.glmnet(x_train_vars, y_train_var, type.measure="mse", alpha=i/10, 
       family="gaussian")
   
-  ## Use each model to predict 'y' given the Testing dataset
   predicted <- 
     predict(list.of.fits[[fit.name]], 
       s=list.of.fits[[fit.name]]$lambda.1se, newx=x_val_vars)
   
-  ## Calculate the Mean Squared Error...
   rss <- sum((predicted - y_val_var) ^ 2)
   tss <- sum((y_val_var - mean(y_val_var)) ^ 2)
   rsq <- 1 - rss/tss
   rmse <- sqrt(mean((y_val_var - predicted)^2))
   
-  ## Store the results
   temp <- data.frame(alpha=i/10, rmse=rmse, rsq=rsq, fit.name=fit.name)
   results <- rbind(results, temp)
 }
 print(results)
 ```
+
+```{r}
+p <- ggplot() +
+  geom_point(data = results, aes(x = alpha, y = rmse))
+p
+```
+
+```{r}
+p <- ggplot() +
+  geom_point(data = results, aes(x = alpha, y = rsq))
+p
+```
+
+Na powyższych wykresach zaprezentowane zostały wartości $RMSE$ oraz $R-squared$ otrzymane dla zbioru walidacyjnego, po wytrenowaniu modelu o różnych wartościach parametru $\alpha$ na zbiorze trenującym. 
+Jak można zauważyć, najmniejszą wartość $RMSE$ oraz najlepsze dopasowanie $R-squared$ uzyskane zostało dla współczynnika $\alpha=0.4$.
+
+### Regresja nieliniowa (wielomianowa) <a name="nonlinear-regression"></a>
+
+Często okazuje się, że zależność między zmiennymi niestety nie jest liniowa, a wtedy zwykła regresja liniowa może okazać się niewystarczająca. W takim przypadku można jednak spróbować zastosować regresję wielomianową. 
+
+W R jest możliwość zaprojektowania takiej metody poprzez dodanie zmiennych będących istniejącymi zmiennymi podniesionymi do potęgi. W naszym przypadku, po przetestowaniu różnych wariantów, najlepszy wynik uzyskałyśmy dodając zmienne podniesione do 2 oraz do 3 potęgi.
+
+Poniżej zaprezentowano parametry modelu otrzymane po wytrenowaniu go na zbiorze trenującym. 
+
+```{r}
+lm_mod <- lm(length ~ poly(cfin1, 3) + poly(cfin2, 3) + poly(chel1, 3) + poly(chel2, 3)  + poly(lcop1, 3)  + poly(lcop2, 3) + poly(fbar, 3) + poly(recr, 3) + poly(cumf, 3) + poly(totaln, 3) + poly(sst, 3) + poly(sal, 3) + poly(xmonth, 3) + poly(nao, 3) , data = train)
+
+summary(lm_mod)
+```
+
+Z wywołania funkcji `summary` możemy wywnioskować, że niektóre atrybuty okazały się nieistotne. Są to na przykład: zmienna *cfin2* podniesiona do trzeciej potęgi oraz zmienna *chel2* również podniesiona do potęgi trzeciej.
+W dalszej analizie można by usunąć te zmienne z modelu w celu jego ulepszenia.
+
+Poniżej przedstawione zostały wartości parametrów $RMSE$ oraz $R-squared$ otrzymane dla zbioru walidacyjnego, po wytrenowaniu modelu na zbiorze trenującym. 
+
+```{r}
+pred <- predict(lm_mod, validation)
+printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)), calculate_rsq(pred, validation$length))
+```
+
+Jak widać, model regresji wielomianowej wykorzystujące wszystkie atrybuty podniesione do 1, 2 oraz 3 potęgi myli się średnio o 1.26 centymetra w stosunku do prawdziwej długości śledzia, co daje nam lepszy wynik niż w przypadku regresji liniowej. Zgodnie z oczekiwaniami, model cechuje się lepszym dopasowaniem do danych, ze względu na fakt większego stopnia skoplikowania zależności między zmiennymi w rozpatrywanym przez nas problemie.
+W związku z tym faktem postanowiłyśmy również przetestować algorytm bardziej dla niego odpowiedni.
 
 ## Gradient Boosting Machine <a name="yoyo"></a>
 Kolejnym algorytmem który można wykorzystać do zadania regresji jest Gradient Boosting Machine. Jest to algorytm z rodziny tak zwanych *ensemble methods*, metod wykorzystujących wiele algorytmów uczenia celem uzyskania trafniejszych wyników. 

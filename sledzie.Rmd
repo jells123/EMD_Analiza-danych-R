@@ -12,7 +12,11 @@ output: html_document
 4. [Analiza wartości atrybutów](#wartosci_atryb)
 5. [Korelacje między zmiennymi](#korelacje)
 6. [Zmiana rozmiaru śledzi w czasie](#rozmiar)
-7. [Regresor przewidujący rozmiar śledzia]
+7. [Regresor przewidujący rozmiar śledzia](#regresor)
+    1. [Przygotowanie zbioru trenującego i testowego](#podzial)
+    2. [Regresja liniowa](#linear-regression)
+    3. [Regresja nieliniowa (wielomianowa)](#nonlinear-regression)
+    4. [Regresja Ridge, Lasso i Elastic-Net](#ela-regression)
 8. [Analiza ważności atrybutów najlepszego modelu regresji]
 
 ## Streszczenie analizy <a name="streszczenie"></a>
@@ -20,7 +24,6 @@ Zabawa była przednia
 
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
 
-### Sub paragraph <a name="subparagraph1"></a>
 Lista wykorzystanych bibliotek:
 
 - dplyr  
@@ -347,7 +350,11 @@ Powyższy interaktywny wykres przedstawia zależność rozmiaru śledzi od czasu
 
 Dzięki linii trendu na wykresie można z łatwością zaobserować, że do około 15000 przykładu rozmiar śledzia rósł, a później zaczął stopniowo spadać, aż osiągnął średnie minimum w ostatnim przykładzie.
 
-## Przygotowanie zbioru trenującego i testowego
+## Regresor przewidujący rozmiar śledzia <a name="regresor"></a>
+### Przygotowanie zbioru trenującego i testowego <a name="podzial"></a>
+
+Aby poprawnie dobrać parametry modelu oraz oszacować jego skuteczność, zbiór danych został podzielony na dane uczące, walidujące i testowe w stosunku 0.56 do 0.24 do 0.20. W rezultacie otrzymane zostały następujące rozmiary zbiorów:
+
 ```{r, echo=FALSE}
 TRAIN_PERCENT <- 0.8
 VALIDATION_PERCENT <- 0.3
@@ -362,12 +369,13 @@ test <- numeric_data[-train_idx,-1]
 validation_size <- floor(VALIDATION_PERCENT * nrow(train))
 validation_idx <- sample(seq_len(nrow(train)), size = validation_size)
 validation <- train[validation_idx,]
+train <- train[-validation_idx,]
 
 print("Rozmiary zbiorów:")
 printf("Trenujący: %d | Walidacyjny: %d | Testowy: %d", nrow(train), nrow(validation), nrow(test))
 ```
 
-## Regresja liniowa <a name="linear-regression"></a>
+### Regresja liniowa <a name="linear-regression"></a>
 ```{r, echo=FALSE}
 calculate_rsq <- function(pred, actual) {
   rss <- sum((pred - actual) ^ 2)
@@ -389,7 +397,7 @@ summary(lm_mod)
 printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)), calculate_rsq(pred, validation$length))
 ```
 
-## Regresja nieliniowa v1  <a name="nonlinear-regression1"></a>
+### Regresja nieliniowa (wielomianowa) <a name="nonlinear-regression"></a>
 ```{r}
 lm_mod <- lm(length ~ poly(cfin1, 2) + poly(cfin2, 2) + poly(chel1, 2) + poly(chel2, 2)  + poly(lcop1, 2)  + poly(lcop2, 2) + poly(fbar, 2) + poly(recr, 2) + poly(cumf, 2) + poly(totaln, 2) + poly(sst, 2) + poly(sal, 2) + poly(xmonth, 2) + poly(nao, 2) , data = train)
 
@@ -400,7 +408,6 @@ printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)
 summary(lm_mod)
 ```
 
-## Regresja nieliniowa v2 <a name="nonlinear-regression2"></a>
 ```{r}
 lm_mod <- lm(length ~ poly(cfin1, 3) + poly(cfin2, 3) + poly(chel1, 3) + poly(chel2, 3)  + poly(lcop1, 3)  + poly(lcop2, 3) + poly(fbar, 3) + poly(recr, 3) + poly(cumf, 3) + poly(totaln, 3) + poly(sst, 3) + poly(sal, 3) + poly(xmonth, 3) + poly(nao, 3) , data = train)
 
@@ -411,7 +418,7 @@ printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)
 summary(lm_mod)
 ```
 
-## Regresja Lasso <a name="lasso-regression"></a>
+### Regresja Ridge, Lasso i Elastic-Net <a name="ela-regression"></a>
 ```{r}
 x_train_vars <- model.matrix(length~. , train)[,-1]
 x_val_vars <- model.matrix(length~. , validation)[,-1]
@@ -426,7 +433,7 @@ for (i in 0:10) {
   fit.name <- paste0("alpha", i/10)
   
   list.of.fits[[fit.name]] <-
-    glmnet(x_train_vars, y_train_var, type.measure="mse", alpha=i/10, 
+    cv.glmnet(x_train_vars, y_train_var, type.measure="mse", alpha=i/10, 
       family="gaussian")
   
   ## Use each model to predict 'y' given the Testing dataset
@@ -435,7 +442,7 @@ for (i in 0:10) {
       s=list.of.fits[[fit.name]]$lambda.1se, newx=x_val_vars)
   
   ## Calculate the Mean Squared Error...
-  rss <- sum((pred - y_val_var) ^ 2)
+  rss <- sum((predicted - y_val_var) ^ 2)
   tss <- sum((y_val_var - mean(y_val_var)) ^ 2)
   rsq <- 1 - rss/tss
   rmse <- sqrt(mean((y_val_var - predicted)^2))

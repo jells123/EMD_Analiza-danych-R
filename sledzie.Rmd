@@ -24,7 +24,11 @@ output: html_document
     12. Oscylacja północnoatlantycka (nao)
 5. [Korelacje między zmiennymi](#korelacje)
 6. [Zmiana rozmiaru śledzi w czasie](#rozmiar)
-7. [Regresor przewidujący rozmiar śledzia]
+7. [Regresor przewidujący rozmiar śledzia](#regresor)
+    1. [Przygotowanie zbioru trenującego i testowego](#podzial)
+    2. [Regresja liniowa](#linear-regression)
+    3. [Regresja nieliniowa (wielomianowa)](#nonlinear-regression)
+    4. [Regresja Ridge, Lasso i Elastic-Net](#ela-regression)
 8. [Analiza ważności atrybutów najlepszego modelu regresji]
 
 ## Streszczenie analizy <a name="streszczenie"></a>
@@ -356,7 +360,11 @@ Powyższy interaktywny wykres przedstawia zależność rozmiaru śledzi od czasu
 
 Dzięki linii trendu na wykresie można z łatwością zaobserować, że do około 15000 przykładu rozmiar śledzia rósł, a później zaczął stopniowo spadać, aż osiągnął średnie minimum w ostatnim przykładzie.
 
-## Przygotowanie zbioru trenującego i testowego
+## Regresor przewidujący rozmiar śledzia <a name="regresor"></a>
+### Przygotowanie zbioru trenującego i testowego <a name="podzial"></a>
+
+Aby poprawnie dobrać parametry modelu oraz oszacować jego skuteczność, zbiór danych został podzielony na dane uczące, walidujące i testowe w stosunku 0.56 do 0.24 do 0.20. W rezultacie otrzymane zostały następujące rozmiary zbiorów:
+
 ```{r, echo=FALSE}
 TRAIN_PERCENT <- 0.8
 VALIDATION_PERCENT <- 0.3
@@ -403,7 +411,7 @@ Z wywołania metody `summary` można odczytać, które zmienne okazały się zna
 
 Prosty model regresji liniowej wykorzystujący wszystkie atrybuty jakimi można byłoby opisać zmienną *length* myli się średnio o 1.34 centymetry w stosunku do prawdziwej długości śledzia. 
 
-## Regresja nieliniowa v1  <a name="nonlinear-regression1"></a>
+### Regresja nieliniowa (wielomianowa) <a name="nonlinear-regression"></a>
 ```{r}
 lm_mod <- lm(length ~ poly(cfin1, 2) + poly(cfin2, 2) + poly(chel1, 2) + poly(chel2, 2)  + poly(lcop1, 2)  + poly(lcop2, 2) + poly(fbar, 2) + poly(recr, 2) + poly(cumf, 2) + poly(totaln, 2) + poly(sst, 2) + poly(sal, 2) + poly(xmonth, 2) + poly(nao, 2) , data = train)
 
@@ -414,7 +422,6 @@ printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)
 summary(lm_mod)
 ```
 
-## Regresja nieliniowa v2 <a name="nonlinear-regression2"></a>
 ```{r}
 lm_mod <- lm(length ~ poly(cfin1, 3) + poly(cfin2, 3) + poly(chel1, 3) + poly(chel2, 3)  + poly(lcop1, 3)  + poly(lcop2, 3) + poly(fbar, 3) + poly(recr, 3) + poly(cumf, 3) + poly(totaln, 3) + poly(sst, 3) + poly(sal, 3) + poly(xmonth, 3) + poly(nao, 3) , data = train)
 
@@ -425,24 +432,13 @@ printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)
 summary(lm_mod)
 ```
 
-## Regresja Lasso <a name="lasso-regression"></a>
+### Regresja Ridge, Lasso i Elastic-Net <a name="ela-regression"></a>
 ```{r}
-#install.packages("glmnet")
-
-lambda_seq <- 10^seq(2, -2, by = -.1)
-
 x_train_vars <- model.matrix(length~. , train)[,-1]
 x_val_vars <- model.matrix(length~. , validation)[,-1]
 
 y_train_var <- train$length
 y_val_var <- validation$length
-
-# to .cv or not to .cv?
-cv_output <- cv.glmnet(x_train_vars, y_train_var, alpha = 1, lambda = lambda_seq)
-best_lam <- cv_output$lambda.min
-
-lasso_best <- glmnet(x_train_vars, y_train_var, alpha = 1, lambda = best_lam)
-pred <- predict(lasso_best, s = best_lam, newx = x_val_vars)
 
 list.of.fits <- list()
 results <- data.frame()
@@ -460,7 +456,7 @@ for (i in 0:10) {
       s=list.of.fits[[fit.name]]$lambda.1se, newx=x_val_vars)
   
   ## Calculate the Mean Squared Error...
-  rss <- sum((pred - y_val_var) ^ 2)
+  rss <- sum((predicted - y_val_var) ^ 2)
   tss <- sum((y_val_var - mean(y_val_var)) ^ 2)
   rsq <- 1 - rss/tss
   rmse <- sqrt(mean((y_val_var - predicted)^2))

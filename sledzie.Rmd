@@ -30,18 +30,33 @@ output: html_document
     3. [Regresja liniowa z regularyzacją (Ridge, Lasso i Elastic-Net)](#ela-regression)
     4. [Regresja nieliniowa (wielomianowa)](#nonlinear-regression)
     5. [Gradient Boosting Machine] (#gbm_model)
-8. [Analiza ważności atrybutów najlepszego modelu (Gradient Boosting Machine)](#gbm_analysis)
+8. [Analiza ważności atrybutów najlepszego modelu (GBM)](#gbm_analysis)
 
 ## Streszczenie analizy <a name="streszczenie"></a>
-Celem projektu było określenie jakie mogą być główne przyczyny stopniowego zmniejszania się długości śledzi oceanicznych wyławianych w Europie. Aby odpowiedzieć na to pytanie w naszym raporcie dokonałyśmy szeregu analiz mających nas przybliżyć do rozwiązania. 
+Celem projektu było określenie jakie mogą być główne przyczyny stopniowego zmniejszania się długości śledzi oceanicznych wyławianych w Europie. Aby odpowiedzieć na to pytanie w naszym raporcie dokonałyśmy szeregu analiz mających nas przybliżyć do rozwiązania.
+
 Zaczęłyśmy od wczytania i przygotowania danych w którym zadbałyśmy o poprawne obsłużenie brakujących wartości. Następnie dokonałyśmy wstępnego przeglądu danych aby dowiedzieć się podstawowych informacji o rozkładzie wartości poszczególnych atrybutów. 
+
 W kolejnej sekcji przeanalizowałyśmy możliwe zależności występujące pomiędzy zmiennymi w zbiorze danych. W tym celu zbudowałyśmy macierz korelacji każdej zmiennej z każdą oraz dla wybranych, najbardziej istotnych zależności przedstawiłyśmy je na wykresie w celu zaprezentowania ich charakterystyki. 
 Następnie przedstawiłyśmy interaktywny wykres z użyciem biblioteki plotly, przedstawiający jak zmieniała się długość śledzia w czasie. 
+
 Na koniec podjęłyśmy się zbudowania regresora przewidującego długość śledzia w czasie. Aby uzyskać jak najlepszą jakość predykcji przetestowałyśmy kilka modeli regresji. Najpierw jednak podzieliłyśmy zbiór danych na dane treningowe, walidacyjne i testowe aby uzyskiwane przez modele wyniki były miarodajne. Predykcje każdego z modeli zostały ocenione za pomocą miary RMSE oraz współczynnika determinacji R-squared. 
 
-Zaczęłyśmy od najbardziej podstawowej regresji liniowej. Zgodnie z oczekiwaniami model ten nie był w stanie dopasować się w dobrym stopniu. W związku z tym zdecydowałyśmy się spróbować użyć różnych technik regularyzacji. Co prawda poprawiło to wynik ale tylko nieznacznie. Dlatego wyciągnęłyśmy wniosek że zależności które występują w zbiorze danych są bardziej niż liniowo skomplikowane. Aby uzyskać model lepiej dopasowujący się do danych zbudowałyśmy model regresji wielomianowej poprzez proste dodanie istniejących zmiennych podniesionych do potęgi do modelu. Zabieg ten spowodował znaczny spadek błędu średniokwadratowego a zatem lepsze dopasowanie. Jednak ze względu na prostotę tego rozwiązania postanowiłśmy spróbować skorzystać z algorytmu dedykowanego do tego tego typu problemów, a mianowicie z GBM. Okazał się on być najlepszy z pośród przez jas przetestowanych i zapewnił nam wynik RMSE równy … oraz R-squared równe …. 
+Zaczęłyśmy od najbardziej podstawowej regresji liniowej. Zgodnie z oczekiwaniami model ten nie był w stanie dopasować się w dobrym stopniu. W związku z tym zdecydowałyśmy się spróbować użyć różnych technik regularyzacji. Co prawda poprawiło to wynik ale tylko nieznacznie. Dlatego wyciągnęłyśmy wniosek że zależności które występują w zbiorze danych są bardziej niż liniowo skomplikowane. 
+
+Aby uzyskać model lepiej dopasowujący się do danych zbudowałyśmy model regresji wielomianowej poprzez proste dodanie istniejących zmiennych podniesionych do potęgi do modelu. Zabieg ten spowodował znaczny spadek błędu średniokwadratowego a zatem lepsze dopasowanie, był jednak opisany dość specyficznym równaniem z punktu widzenia interpretacji.
+
+Jednak wynik udało się poprawić jeszcze bardziej, korzystając z modelu z rodziny *ensemble methods* - Gradient Boosting Machine - złożonego z drzew decyzyjnych. Okazał się on być najlepszy z pośród przez nas przetestowanych i zapewnił nam wynik RMSE równy 1.13 (centymetra) oraz R-squared równe 0.52.
 
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
+
+Kod zapewniający powtarzalność wyników przy każdym uruchomieniu raportu na tych samych danych:
+
+```{r}
+set.seed(13)
+```
+
+Lista bibliotek:
 
 ```{r, echo=FALSE, results='hide', message=FALSE}
 library(corrplot)
@@ -58,12 +73,6 @@ printf <- function(...) invisible(print(sprintf(...)))
 ```
 ```{r, echo=FALSE}
 (.packages())
-```
-
-Kod zapewniający powtarzalność wyników przy każdym uruchomieniu raportu na tych samych danych:
-
-```{r}
-set.seed(13)
 ```
 
 Wczytanie danych i podgląd postawowych informacji na temat zbioru danych: 
@@ -410,7 +419,7 @@ summary(lm_mod)
 
 Z wywołania metody `summary` można odczytać, które zmienne okazały się znaczące. Na etapie poszukiwania najlepszego bardziej istotne są jednak wartości *Residual standard error* oraz *R-squared*. 
 
-Prosty model regresji liniowej wykorzystujący wszystkie atrybuty jakimi można byłoby opisać zmienną *length* myli się średnio o 1.34 centymetry w stosunku do prawdziwej długości śledzia. 
+Prosty model regresji liniowej wykorzystujący wszystkie atrybuty jakimi można byłoby opisać zmienną *length* myli się średnio o 1.33 centymetra w stosunku do prawdziwej długości śledzia. Natomiast współczynnik $R^2$ jest stosunkowo niski, czego należało się spodziewać po złożoności tego modelu. 
 
 ### Regresja liniowa z reularyzacją (Ridge, Lasso i Elastic-Net) <a name="ela-regression"></a>
 Regresję liniową można ulepszyć stosując regularyzację. W języku R dostępna jest paczka o nazwie *glmnet*, która pozwala na przetestowanie w prosty sposób różne rodzaje regresji z regularyzacją. W raporcie zaprezentowane zostaną 3 z nich:
@@ -541,18 +550,18 @@ A także końcowe, aż do osiągnięcia liczby drzew równej 2000:
 tail(rmses)
 ```
 
-Dodawanie kolejnych drzew pozwala zmniejszyć błąd predykcji długości śledzia aż do 1.1327. 
+Dodawanie kolejnych drzew pozwala zmniejszyć błąd predykcji długości śledzia aż do 1.15. 
 
-Poniższa komórka wypisuje ponadto osiągnięte wartości $R^2$ dla końcowych iteracji dla których liczba drzew była największa.
+Poniższa komórka wypisuje ponadto osiągnięte wartości $R^2$ dla końcowych iteracji dla których liczba drzew była największa. Widzimy większe dopasowanie modelu niż w poprzednio rozważanych przypadkach, czyli większe uwzględnienie wariancji zbioru danych.
 
 ```{r, echo=FALSE}
 tail(rsq)
 ```
 
 
-## Analiza ważności atrybutów najlepszego modelu (Gradient Boosting Machine) <a name="gbm_analysis></a>
+## Analiza ważności atrybutów najlepszego modelu - GBM <a name="gbm_analysis"></a>
 
-Modelem dla którego uzyskano najlepsze wyniki na zbiorze walidacyjnym okazał się model Gradient Boosting Machine z drzewami decyzyjnymi. W związku z tym, ten model został wykorzystany do predykcji długości śledzia w oparciu o dane atrybuty na zbiorze testowym.
+Modelem dla którego uzyskano najlepsze wyniki na zbiorze walidacyjnym okazał się model **Gradient Boosting Machine** z drzewami decyzyjnymi. W związku z tym, ten model został wykorzystany do predykcji długości śledzia w oparciu o dane atrybuty na zbiorze testowym.
 
 Poniżej zaprezentowano kod wywołujący predykcję na zbiorze testowym i wyliczający miary oceny tego modelu na tym zbiorze.
 
@@ -622,18 +631,18 @@ explanation <- explain(local_obs, explainer, n_features = 5)
 plot_features(explanation)
 ```
 
-Powyższe wykresy są zróżnicowane. Powtarza się w nich odwołanie do zmiennej *sst*. Bardzo silny wpływ ma zmienna *sst* na długość śledzia kiedy temperatura przy powierzchni wody jest bardzo wysoka - patrz `Case 36958`, wpływ ten jest wówczas negatywny. Z kolei pozytywny wpływ na długość śledzia zaobserwowano gdy temperatura nie przekraczała 14 stopni Celsjusza - `Case 29236`. W jednym z pokazanych przypadków największe znaczenie miała zmienna *recr*, a zaraz po niej istotna ponownie okazała się *sst*. 
+Powyższe wykresy są zróżnicowane. Powtarza się w nich odwołanie do zmiennej *sst*. Bardzo silny wpływ ma zmienna *sst* na długość śledzia kiedy temperatura przy powierzchni wody jest bardzo wysoka - patrz `Case 41032` i `Case 39184`, wpływ ten jest wówczas negatywny. Z kolei pozytywny wpływ na długość śledzia zaobserwowano gdy temperatura nie przekraczała 14 stopni Celsjusza - `Case 28316`. Ciekawy jest cały przypadek `41032`, ponieważ każda z pierwszych pięciu zmiennych objaśniających predykcję ma negatywny wpływ na rozmiar śledzia. 
 
 Bardziej skoncentrowaną reprezentację można uzyskać za pomocą metody `plot_explanations`, która pozwoli zwizualizować więcej przypadków jednocześnie.
 
 ```{r, echo=FALSE, cache=TRUE}
-local_obs <- train[sample(seq_len(nrow(train)), size = 20),]
+local_obs <- train[sample(seq_len(nrow(train)), size = 30),]
 
 explainer <- lime(train, model)
 explanation <- explain(local_obs, explainer, n_features = 5)
 plot_explanations(explanation)
 ```
 
-Na tzw. mapie cieplnej (heat map) zaprezentowano 20 losowo wybranych przypadków z zbioru trenującego. Znaczący wpływ temperatury przy powierzchni o wysokiej wartości, przekraczającej 37 stopni, powtarza się w wielu przypadkach. Podobnie jest z temperaturą niską. Umiarkowany negatywny wpływ na długość śledzia ma *fbar* <= 0.227, co oznaczałoby że niskie natężenie połowów w regionie wiąże się z zmniejszeniem długości śledzia. 
+Na tzw. mapie cieplnej (heat map) zaprezentowano 30 losowo wybranych przypadków z zbioru trenującego. Znaczący jest wpływ temperatury przy powierzchni o wysokiej wartości, przekraczającej 37 stopni na niektóre z przypadków, model przykłada do tej zmiennej największą wagę. Podobnie jest z temperaturą niską (nawet więcej przypadków w tej małej próbce). Umiarkowany negatywny wpływ na długość śledzia ma *fbar* <= 0.227, co oznaczałoby że niskie natężenie połowów w regionie wiąże się z zmniejszeniem długości śledzia. 
 
 Należy przy okazji tej analizy podkreślić, że najlepsze wyniki udało się uzyskać implementując najbardziej skomplikowany z wykorzystywanych modeli. Bez wątpienia ma on większe zdolności do modelowania skomplikowanych zależności niż podstawowe modele regresji. Nie można jednak mówić tutaj o zbyt skomplikowanym modelu (overfitting), ponieważ poradził on sobie równie dobrze na zbiorze testowym który został użyty tylko raz, na koniec analizy.

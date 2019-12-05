@@ -33,7 +33,13 @@ output: html_document
 8. [Analiza ważności atrybutów najlepszego modelu (Gradient Boosting Machine)](#gbm_analysis)
 
 ## Streszczenie analizy <a name="streszczenie"></a>
-Zabawa była przednia
+Celem projektu było określenie jakie mogą być główne przyczyny stopniowego zmniejszania się długości śledzi oceanicznych wyławianych w Europie. Aby odpowiedzieć na to pytanie w naszym raporcie dokonałyśmy szeregu analiz mających nas przybliżyć do rozwiązania. 
+Zaczęłyśmy od wczytania i przygotowania danych w którym zadbałyśmy o poprawne obsłużenie brakujących wartości. Następnie dokonałyśmy wstępnego przeglądu danych aby dowiedzieć się podstawowych informacji o rozkładzie wartości poszczególnych atrybutów. 
+W kolejnej sekcji przeanalizowałyśmy możliwe zależności występujące pomiędzy zmiennymi w zbiorze danych. W tym celu zbudowałyśmy macierz korelacji każdej zmiennej z każdą oraz dla wybranych, najbardziej istotnych zależności przedstawiłyśmy je na wykresie w celu zaprezentowania ich charakterystyki. 
+Następnie przedstawiłyśmy interaktywny wykres z użyciem biblioteki plotly, przedstawiający jak zmieniała się długość śledzia w czasie. 
+Na koniec podjęłyśmy się zbudowania regresora przewidującego długość śledzia w czasie. Aby uzyskać jak najlepszą jakość predykcji przetestowałyśmy kilka modeli regresji. Najpierw jednak podzieliłyśmy zbiór danych na dane treningowe, walidacyjne i testowe aby uzyskiwane przez modele wyniki były miarodajne. Predykcje każdego z modeli zostały ocenione za pomocą miary RMSE oraz współczynnika determinacji R-squared. 
+
+Zaczęłyśmy od najbardziej podstawowej regresji liniowej. Zgodnie z oczekiwaniami model ten nie był w stanie dopasować się w dobrym stopniu. W związku z tym zdecydowałyśmy się spróbować użyć różnych technik regularyzacji. Co prawda poprawiło to wynik ale tylko nieznacznie. Dlatego wyciągnęłyśmy wniosek że zależności które występują w zbiorze danych są bardziej niż liniowo skomplikowane. Aby uzyskać model lepiej dopasowujący się do danych zbudowałyśmy model regresji wielomianowej poprzez proste dodanie istniejących zmiennych podniesionych do potęgi do modelu. Zabieg ten spowodował znaczny spadek błędu średniokwadratowego a zatem lepsze dopasowanie. Jednak ze względu na prostotę tego rozwiązania postanowiłśmy spróbować skorzystać z algorytmu dedykowanego do tego tego typu problemów, a mianowicie z GBM. Okazał się on być najlepszy z pośród przez jas przetestowanych i zapewnił nam wynik RMSE równy … oraz R-squared równe …. 
 
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
 

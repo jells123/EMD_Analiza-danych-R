@@ -33,7 +33,17 @@ output: html_document
 8. [Analiza ważności atrybutów najlepszego modelu (Gradient Boosting Machine)](#gbm_analysis)
 
 ## Streszczenie analizy <a name="streszczenie"></a>
-Zabawa była przednia
+Przedmiotem analizy jest zbiór danych dotyczący rozmiaru śledzi oceanicznych i warunków w jakich żyją. Wiersze są uporządkowane chronologicznie i każdy wiersz jest opisany 15 atrybutami. Po usunięciu wierszy z brakującymi danymi (brak danych obejmował kolumny dotyczące dostępności planktonu oraz temperatury przy powierzchni wody) otrzymano ponad 40 000 obserwacji wykorzystane do dalszej analizy. 
+
+Obserwacje długości śledzia mają rozkład normalny, od 19 do 32.5 centymetra. Rozkłady pozostałych atrybutów są niestandardowe. Sześć zmiennych opisujące dostępność planktonu ma rozkłady zbliżone do siebie. Natężenie połowów w regionie średnio wynosi 33%, jednak wystąpiły obserwacje skrajne o wartości 7% jak i 85%. Zmienna opisująca roczny narybek osiąga wartości rzędu setek tysięcy, podobnie jak łączna liczba ryb złowionych w ramach połowu. Temperatura przy powierzchni wody średnio wynosi 25 stopni celsjusza, ale występowały też przypadki wody skrajnie zimnej (2 stopnie) i ciepej (ponad 35 stopni). Najwięcej obserwacji pochodzi z miesięcy sierpień, październik i lipiec.
+
+Przeprowadzono analizę korelacji która wykazała związki między gatunkami planktonu, a także dość silną korelację negatywną rozmiaru śledzia i temperatury przy powierzchni wody. Z kolei temperatura przy powierzchni wody jest pozytywnie skorelowana z oscylacją północno atlantycką.
+
+Dane na temat śledzi zbierano przez 60 lat. Analiza czasowa zmiany długości śledzia wykazuje, że rozmiar śledzia najpierw wzrastał, a później zaczął stopniowo spadać.
+
+Przetestowano różne modele regresji pozwalające na przewidzenie długości śledzia w zależności od zadanych atrybutów, a także dalszą interpretację ważności tych atrybutów. Analizie poddano regresję liniową, Ridge, Lasso i Elastic-Net, nieliniową stopnia trzeciego, a także Gradient Boosting Machine z drzewami decyzyjnymi. Najlepszy wynik predykcji długości śledzia na zbiorze walidacyjnym udało się uzyskać dla tego ostatniego modelu, osiągając $RMSE$ równe 1.1327, czyli niewiele ponad centymetr. 
+
+Najbardziej istotnymi atrybutami w modelu okazały się przede wszystkim temperatura przy powierzchni wody, a także numer miesiąca, roczny narybek i liczba ryb złowionych w ramach połowu. Szczególnie duży wpływ na predykcję z wykorzystaniem drzew decyzyjnych miały temperatury skrajne. 
 
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
 
@@ -264,7 +274,7 @@ print(p + ggtitle("Histogram liczebności zmiennej 'sst'"))
 summary(numeric_data$sst)
 printf("Odchylenie standardowe: %f", sd(numeric_data$sst))
 ```
-Rozkład wartości tej zmiennej jest stosunkowo zaskakujący, ponieważ wynika z niego że często obserwowane były zarówno bardzo niskie jak i bardzo wysokie temperatury wody. Szczególnie maksimum jest zastanawiające - największa wartość tej zmiennej to 52 stopnie celsjusza. Należy brać pod uwagę fakt że pomiar następował przy powierzchni wody, w związku z czym wpływ na taki pomiar z pewnością miało na przykład nasłonecznienie. Średnia temperatura przy powierzchni wody wynosi 25 stopni. Stosunkowo rzadko odnotowano temperatury bliskie zera. Dwa przedziały o największej liczności, jak wynika z histogramu, to 30-35 oraz 10-15. 
+Rozkład wartości tej zmiennej jest stosunkowo zaskakujący, ponieważ wynika z niego że często obserwowane były zarówno bardzo niskie jak i bardzo wysokie temperatury wody. Szczególnie maksimum jest zastanawiające - największa wartość tej zmiennej to 52 stopnie celsjusza. Należy brać pod uwagę fakt że pomiar następował przy powierzchni wody, w związku z czym wpływ na taki pomiar z pewnością miało na przykład nasłonecznienie. Średnia temperatura przy powierzchni wody wynosi 25 stopni. Stosunkowo rzadko odnotowano temperatury bliskie zera. Dwa przedziały o największej liczności, jak wynika z histogramu, to 30-35 oraz 10-15. Mogą one odpowiadać porom roku, które wpływają na nasłonecznienie wody i temperaturę powietrza.
 
 ### Poziom zasolenia wody (sal) [Knudsen ppt] <a name="attr_sal"></a>
 

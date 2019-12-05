@@ -10,6 +10,18 @@ output: html_document
 2. [Wczytanie i przygotowanie danych](#wczytanie)
 3. [Podstawowe informacje o zbiorze danych](#podst_info)
 4. [Analiza wartości atrybutów](#wartosci_atryb)
+    1. Długość złowionego śledzia
+    2. Dostępność planktonu (cfin)
+    3. Dostępność planktonu (chel)
+    4. Dostępność planktonu (lcop)
+    5. Natężenie połowów w regionie (fbar) 
+    6. Roczny narybek (recr)
+    7. Łączne roczne natężenie połowów w regionie (cumf)
+    8. Łączna liczba ryb złowionych w ramach połowu (totaln)
+    9. Temperatura przy powierzchni wody (sst)
+    10. Poziom zasolenia wody (sal) 
+    11. Miesiąc połowu (xmonth) 
+    12. Oscylacja północnoatlantycka (nao)
 5. [Korelacje między zmiennymi](#korelacje)
 6. [Zmiana rozmiaru śledzi w czasie](#rozmiar)
 7. [Regresor przewidujący rozmiar śledzia]
@@ -20,7 +32,6 @@ Zabawa była przednia
 
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
 
-### Sub paragraph <a name="subparagraph1"></a>
 Lista wykorzystanych bibliotek:
 
 - dplyr  
@@ -112,8 +123,6 @@ head(data)
 Poniżej przedstawiono analizę wartości poszczególnych atrybutów, które opisują dany rekord. Łącznie danych jest 15 atrybutów. Wśród nich występują zmienne takie jak dostępności różnych gatunków planktonu, informacje dotyczące połowów, właściwości wody etc. 
 
 Lista atrybutów jest następująca:
-
-/ # TODO ADD LINKS
 
 - **length**: długość złowionego śledzia [cm];
 - **cfin1**: dostępność planktonu [zagęszczenie Calanus finmarchicus gat. 1];
@@ -362,12 +371,17 @@ test <- numeric_data[-train_idx,-1]
 validation_size <- floor(VALIDATION_PERCENT * nrow(train))
 validation_idx <- sample(seq_len(nrow(train)), size = validation_size)
 validation <- train[validation_idx,]
+train <- train[-validation_idx,]
 
 print("Rozmiary zbiorów:")
 printf("Trenujący: %d | Walidacyjny: %d | Testowy: %d", nrow(train), nrow(validation), nrow(test))
 ```
 
 ## Regresja liniowa <a name="linear-regression"></a>
+Podstawową metodą wykorzystywaną przy zadaniu regresji jest regresja liniowa. Można do tego wykorzystać implementację takiego modelu o nazwie `lm`. Bez wątpienia zaletą regresji liniowej jest prostota, łatwość interpretacji wyników i małe zapotrzebowanie na moc obliczeniową.
+
+Poniżej zaprezentowano parametry modelu otrzymane po wytrenowaniu go na zbiorze trenującym. 
+
 ```{r, echo=FALSE}
 calculate_rsq <- function(pred, actual) {
   rss <- sum((pred - actual) ^ 2)
@@ -385,9 +399,9 @@ summary(lm_mod)
 # residual standard error: 1.362 on 52567 degrees of freedom
 ```
 
-```{r}
-printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)), calculate_rsq(pred, validation$length))
-```
+Z wywołania metody `summary` można odczytać, które zmienne okazały się znaczące. Na etapie poszukiwania najlepszego bardziej istotne są jednak wartości *Residual standard error* oraz *R-squared*. 
+
+Prosty model regresji liniowej wykorzystujący wszystkie atrybuty jakimi można byłoby opisać zmienną *length* myli się średnio o 1.34 centymetry w stosunku do prawdziwej długości śledzia. 
 
 ## Regresja nieliniowa v1  <a name="nonlinear-regression1"></a>
 ```{r}
@@ -463,7 +477,7 @@ Kolejnym algorytmem który można wykorzystać do zadania regresji jest Gradient
 
 W rozważanym problemie skorzystałyśmy z kombinacji drzew decyzyjnych, co jest często spotykanym rozwiązaniem w kontekście Gradient Boosting Machine. Takie rozwiązanie jest zaimplementowane w bibliotece `gbm`.
 
-Liczba drzew generowanych w modelu wynosi 2000. Każde drzewo opisuje parametr `interaction.depth`, który ma wartość 4 i określa że każde drzewo jest małym drzewem z 4 podziałami. Parametr `shrinkage` jest swego rodzaju prędkością uczenia (*learning rate*). 
+Liczba drzew generowanych w modelu wynosi 2000. Każde drzewo opisuje parametr `interaction.depth`, który ma wartość 4 i określa że każde drzewo jest małym drzewem z 4 podziałami. Parametr `shrinkage` jest swego rodzaju prędkością uczenia (*learning rate*). Model wykorzystuje wszystkie atrybuty, jakie są dostępne. 
 
 ```{r, cache=TRUE} 
 
@@ -472,9 +486,7 @@ model <- gbm(length ~ . ,data = train,distribution = "gaussian",n.trees = NUM_TR
 model
 ```
 
-```{r}
-summary(model)
-```
+Po wytrenowaniu modelu możliwa jest analiza jego skuteczności na zbiorze walidacyjnym. W tym szczególnym przypadku można także zaobserwować jak zmniejsza się błąd kwadratowy w miarę jak dodawane są nowe drzewa (zgodnie z koncepcją boostingu, nowe drzewa  "uczą się na błędach poprzednich").
 
 ```{r}
 n_trees_seq = seq(from=100, to=NUM_TREES, by=100)
@@ -483,21 +495,64 @@ pred <- predict(model, validation, n.trees=n_trees_seq)
 mses <- with(validation, apply( (pred - length) ^ 2, 2, mean))
 rmses <- sqrt(mses)
 
+rss <- with(validation, apply( (pred - length) ^ 2, 2, sum))
+tss <- sum((y_val_var - mean(y_val_var)) ^ 2)
+rsq <- 1 - rss/tss
+```
+
+Poniżej zaprezentowano początkowe wartości błędu $RMSE$ na zbiorze walidacyjnym:
+
+```{r, echo=FALSE}
 head(rmses)
 ```
 
-```{r}
+A także końcowe, aż do osiągnięcia liczby drzew równej 2000:
+
+```{r, echo=FALSE}
 tail(rmses)
 ```
 
+Dodawanie kolejnych drzew pozwala zmniejszyć błąd predykcji długości śledzia aż do 1.1327. 
 
-```{r}
-#plot(n_trees_seq, mses, pch=19, col="blue", xlab="Number of Trees", ylab="Test Error", main="Efektywność boostingu na zbiorze walidacyjnym")
+Poniższa komórka wypisuje ponadto osiągnięte wartości $R^2$ dla końcowych iteracji dla których liczba drzew była największa.
+
+```{r, echo=FALSE}
+tail(rsq)
 ```
 
 
+```{r}
+summary(model)
+```
 
+## And the winner is... GRADIENT BOOSTING MACHINE!
 
+```{r}
+y_test_var <- test$length
 
-=======
->>>>>>> 489a3dc45b730402891129474f8664d8e7e668f4
+n_trees_seq = seq(from=100, to=NUM_TREES, by=100)
+pred <- predict(model, test, n.trees=n_trees_seq)
+
+mses <- with(test, apply( (pred - length) ^ 2, 2, mean))
+rmses <- sqrt(mses)
+
+rss <- with(test, apply( (pred - length) ^ 2, 2, sum))
+tss <- sum((y_test_var - mean(y_test_var)) ^ 2)
+rsq <- 1 - rss/tss
+```
+
+```{r, echo=FALSE}
+tail(rmses)
+```
+
+```{r}
+tail(rsq)
+```
+
+```{r}
+summary(model)
+```
+
+```{r}
+plot(n_trees_seq, mses, pch=19, col="blue", xlab="Number of Trees", ylab="Test Error", main="Efektywność boostingu na zbiorze testowym")
+```

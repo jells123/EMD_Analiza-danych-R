@@ -413,31 +413,14 @@ summary(lm_mod)
 
 ## Regresja Lasso <a name="lasso-regression"></a>
 ```{r}
-#install.packages("glmnet")
-
-lambda_seq <- 10^seq(2, -2, by = -.1)
-
 x_train_vars <- model.matrix(length~. , train)[,-1]
 x_val_vars <- model.matrix(length~. , validation)[,-1]
 
 y_train_var <- train$length
 y_val_var <- validation$length
-
-# to .cv or not to .cv?
-cv_output <- cv.glmnet(x_train_vars, y_train_var, alpha = 1, lambda = lambda_seq)
-best_lam <- cv_output$lambda.min
-
-lasso_best <- glmnet(x_train_vars, y_train_var, alpha = 1, lambda = best_lam)
-pred <- predict(lasso_best, s = best_lam, newx = x_val_vars)
 
 list.of.fits <- list()
 results <- data.frame()
-
-x_train_vars <- model.matrix(length~. , train)[,-1]
-x_val_vars <- model.matrix(length~. , validation)[,-1]
-
-y_train_var <- train$length
-y_val_var <- validation$length
 
 for (i in 0:10) {
   fit.name <- paste0("alpha", i/10)
@@ -501,9 +484,3 @@ tail(rmses)
 #plot(n_trees_seq, mses, pch=19, col="blue", xlab="Number of Trees", ylab="Test Error", main="Efektywność boostingu na zbiorze walidacyjnym")
 ```
 
-
-
-
-
-=======
->>>>>>> 489a3dc45b730402891129474f8664d8e7e668f4

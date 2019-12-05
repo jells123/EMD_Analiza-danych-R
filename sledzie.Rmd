@@ -44,9 +44,9 @@ Na koniec podjęłyśmy się zbudowania regresora przewidującego długość śl
 
 Zaczęłyśmy od najbardziej podstawowej regresji liniowej. Zgodnie z oczekiwaniami model ten nie był w stanie dopasować się w dobrym stopniu. W związku z tym zdecydowałyśmy się spróbować użyć różnych technik regularyzacji. Co prawda poprawiło to wynik ale tylko nieznacznie. Dlatego wyciągnęłyśmy wniosek że zależności które występują w zbiorze danych są bardziej niż liniowo skomplikowane. 
 
-Aby uzyskać model lepiej dopasowujący się do danych zbudowałyśmy model regresji wielomianowej poprzez proste dodanie istniejących zmiennych podniesionych do potęgi do modelu. Zabieg ten spowodował znaczny spadek błędu średniokwadratowego a zatem lepsze dopasowanie, był jednak opisany dość specyficznym równaniem z punktu widzenia interpretacji.
+Aby uzyskać lepsze dopasowanie do danych zbudowałyśmy model regresji wielomianowej poprzez proste dodanie istniejących zmiennych podniesionych do potęgi do modelu. Zabieg ten spowodował znaczny spadek błędu średniokwadratowego, a zatem i  lepsze dopasowanie, był jednak opisany dość specyficznym równaniem z punktu widzenia interpretacji.
 
-Jednak wynik udało się poprawić jeszcze bardziej, korzystając z modelu z rodziny *ensemble methods* - Gradient Boosting Machine - złożonego z drzew decyzyjnych. Okazał się on być najlepszy z pośród przez nas przetestowanych i zapewnił nam wynik RMSE równy 1.13 (centymetra) oraz R-squared równe 0.52.
+Wynik udało się poprawić jeszcze bardziej, korzystając z modelu z rodziny *ensemble methods* - Gradient Boosting Machine - złożonego z drzew decyzyjnych. Okazał się on być najlepszy z pośród przez nas przetestowanych i zapewnił nam wynik RMSE równy 1.13 (centymetra) oraz R-squared równe 0.52.
 
 ## Wczytanie i przygotowanie danych <a name="wczytanie"></a>
 
@@ -480,7 +480,7 @@ p
 ```
 
 Na powyższych wykresach zaprezentowane zostały wartości $RMSE$ oraz $R-squared$ otrzymane dla zbioru walidacyjnego, po wytrenowaniu modelu o różnych wartościach parametru $\alpha$ na zbiorze trenującym. 
-Jak można zauważyć, najmniejszą wartość $RMSE$ oraz najlepsze dopasowanie $R-squared$ uzyskane zostało dla współczynnika $\alpha=0.4$.
+Jak można zauważyć, najmniejszą wartość $RMSE$ oraz najlepsze dopasowanie $R-squared$ uzyskane zostało dla współczynnika $\alpha=0.1$.
 
 ### Regresja nieliniowa (wielomianowa) <a name="nonlinear-regression"></a>
 
@@ -509,7 +509,7 @@ printf("RMSE: %f, R2: %f",  calculate_rmse(pred, validation$length, length(pred)
 Jak widać, model regresji wielomianowej wykorzystujące wszystkie atrybuty podniesione do 1, 2 oraz 3 potęgi myli się średnio o 1.26 centymetra w stosunku do prawdziwej długości śledzia, co daje nam lepszy wynik niż w przypadku regresji liniowej. Zgodnie z oczekiwaniami, model cechuje się lepszym dopasowaniem do danych, ze względu na fakt większego stopnia skoplikowania zależności między zmiennymi w rozpatrywanym przez nas problemie.
 W związku z tym faktem postanowiłyśmy również przetestować algorytm bardziej dla niego odpowiedni.
 
-## Gradient Boosting Machine <a name="gbm_model"></a>
+### Gradient Boosting Machine <a name="gbm_model"></a>
 
 Kolejnym algorytmem który można wykorzystać do zadania regresji jest Gradient Boosting Machine. Jest to algorytm z rodziny tak zwanych *ensemble methods*, metod wykorzystujących wiele algorytmów uczenia celem uzyskania trafniejszych wyników. 
 
